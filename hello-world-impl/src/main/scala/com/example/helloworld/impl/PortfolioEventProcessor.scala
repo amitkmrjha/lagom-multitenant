@@ -21,8 +21,6 @@ class PortfolioEventProcessor (session:TenantCassandraSession,readSide:Cassandra
       .setPrepare(_ => prepareStatements())
       .setEventHandler[PortfolioAdded](e => portfolioInsert(e.event.portfolio))
       .setEventHandler[PortfolioUpdated](e => portfolioInsert(e.event.portfolio))
-      .setEventHandler[StockAddedToPortfolio](e => portfolioAddStock(e.event.tenantId,e.event.holding))
-      .setEventHandler[StockRemovedFromPortfolio](e => portfolioRemoveStock(e.event.tenantId,e.event.holding))
       .setEventHandler[PortfolioArchived](e => portfolioDelete(e.event.portfolio))
       .build()
   }
@@ -39,18 +37,6 @@ class PortfolioEventProcessor (session:TenantCassandraSession,readSide:Cassandra
   private def portfolioInsert(portfolio: Portfolio) = {
     for {
       irbs <- PortfolioByTenantIdTable.insert(portfolio)(session, ec)//Future[Done]
-    } yield List(irbs).flatten
-  }
-
-  private def portfolioAddStock(tenantId:String,holding:Holding) = {
-    for {
-      irbs <- PortfolioByTenantIdTable.updateAdd(tenantId,holding)(session, ec)//Future[Done]
-    } yield List(irbs).flatten
-  }
-
-  private def portfolioRemoveStock(tenantId:String,holding:Holding) = {
-    for {
-      irbs <- PortfolioByTenantIdTable.updateDelete(tenantId,holding)(session, ec)//Future[Done]
     } yield List(irbs).flatten
   }
 

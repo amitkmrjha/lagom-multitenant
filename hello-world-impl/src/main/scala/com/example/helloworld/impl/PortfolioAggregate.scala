@@ -43,12 +43,6 @@ case class AddPortfolio(portfolio: Portfolio, replyTo: ActorRef[PortfolioConfirm
 case class UpdatePortfolio(portfolio: Portfolio, replyTo: ActorRef[PortfolioConfirmation])
   extends PortfolioCommand
 
-case class AddStockToPortfolio(tenantId:String,holding:Holding, replyTo: ActorRef[PortfolioConfirmation])
-  extends PortfolioCommand
-
-case class RemoveStockFromPortfolio(tenantId:String,holding:Holding, replyTo: ActorRef[PortfolioConfirmation])
-  extends PortfolioCommand
-
 case class ArchivePortfolio(portfolio: Portfolio, replyTo: ActorRef[PortfolioConfirmation])
   extends PortfolioCommand
 
@@ -75,15 +69,6 @@ object PortfolioAdded {
 case class PortfolioUpdated(portfolio: Portfolio) extends PortfolioEvent
 object PortfolioUpdated {
   implicit val format: Format[PortfolioUpdated] = Json.format
-}
-case class StockAddedToPortfolio(tenantId:String,holding:Holding) extends PortfolioEvent
-object StockAddedToPortfolio {
-  implicit val format: Format[StockAddedToPortfolio] = Json.format
-}
-
-case class StockRemovedFromPortfolio(tenantId:String,holding:Holding) extends PortfolioEvent
-object StockRemovedFromPortfolio {
-  implicit val format: Format[StockRemovedFromPortfolio] = Json.format
 }
 
 case class PortfolioArchived(portfolio: Portfolio) extends PortfolioEvent
@@ -139,8 +124,6 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
         case GetPortfolio(replyTo)  => onGet(replyTo)
         case x: AddPortfolio => reply(x.replyTo)(PortfolioRejected(s"Portfolio already exist with Id ${portfolioOption.get.tenantId}."))
         case x: UpdatePortfolio => onUpdatePortfolio(x)
-        case x: AddStockToPortfolio => onAddStockToPortfolio(x)
-        case x: RemoveStockFromPortfolio => onRemoveStockFromPortfolio(x)
         case x: ArchivePortfolio => onArchivePortfolio(x)
       }
     }else{
@@ -148,8 +131,6 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
         case GetPortfolio(replyTo)  => reply(replyTo)(PortfolioSummary(None))
         case x: AddPortfolio => onAddPortfolio(x)
         case x: UpdatePortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${x.portfolio.tenantId}"))
-        case x: AddStockToPortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${x.tenantId}"))
-        case x: RemoveStockFromPortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${x.tenantId}"))
         case x: ArchivePortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${x.portfolio.tenantId}"))
       }
     }
@@ -162,16 +143,6 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
   private def onUpdatePortfolio(cmd: UpdatePortfolio): ReplyEffect[PortfolioEvent, PortfolioState] =
     Effect
       .persist(PortfolioUpdated(cmd.portfolio) )
-      .thenReply(cmd.replyTo)(s => PortfolioAccepted(PortfolioSummary(s.portfolioOption)))
-
-  private def onAddStockToPortfolio(cmd: AddStockToPortfolio): ReplyEffect[PortfolioEvent, PortfolioState] =
-    Effect
-      .persist(StockAddedToPortfolio(cmd.tenantId,cmd.holding) )
-      .thenReply(cmd.replyTo)(s => PortfolioAccepted(PortfolioSummary(s.portfolioOption)))
-
-  private def onRemoveStockFromPortfolio(cmd: RemoveStockFromPortfolio): ReplyEffect[PortfolioEvent, PortfolioState] =
-    Effect
-      .persist(StockRemovedFromPortfolio(cmd.tenantId,cmd.holding) )
       .thenReply(cmd.replyTo)(s => PortfolioAccepted(PortfolioSummary(s.portfolioOption)))
 
   private def onArchivePortfolio(cmd: ArchivePortfolio): ReplyEffect[PortfolioEvent, PortfolioState] =
@@ -187,8 +158,6 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
     evt match {
       case x:PortfolioAdded => onPortfolioAdded(x)
       case x:PortfolioUpdated=> onPortfolioUpdated(x)
-      case x:StockAddedToPortfolio => onStockAddedToPortfolio(x)
-      case x:StockRemovedFromPortfolio => onStockRemovedFromPortfolio(x)
       case x:PortfolioArchived => onPortfolioArchived(x)
     }
 
@@ -196,10 +165,6 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
     copy(Option(evt.portfolio), LocalDateTime.now().toString)
   private def onPortfolioUpdated(evt: PortfolioUpdated) =
     copy(Option(evt.portfolio), LocalDateTime.now().toString)
-  private def onStockAddedToPortfolio(evt: StockAddedToPortfolio) =
-    copy(addToPortfolio(evt.tenantId,evt.holding), LocalDateTime.now().toString)
-  private def onStockRemovedFromPortfolio(evt: StockRemovedFromPortfolio) =
-    copy(removeFromPortfolio(evt.tenantId,evt.holding), LocalDateTime.now().toString)
   private def onPortfolioArchived(evt: PortfolioArchived) = {
     copy(None, LocalDateTime.now().toString)
   }

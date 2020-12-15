@@ -22,8 +22,6 @@ trait TenantReadSideTable[T <: Portfolio] {
 
   protected val deletePromise: Promise[PreparedStatement] = Promise[PreparedStatement]
 
-  protected val updatePromise: Promise[PreparedStatement] = Promise[PreparedStatement]
-
   protected def tableName: String
 
   protected def primaryKey: String
@@ -36,17 +34,11 @@ trait TenantReadSideTable[T <: Portfolio] {
 
   protected def getDeleteBindValues(entity: T): Seq[AnyRef]
 
-  protected def getUpdateAddBindValues(tenantId:String, holding:Holding): Seq[AnyRef]
-
-  protected def getUpdateDeleteBindValues(tenantId:String, holding:Holding): Seq[AnyRef]
-
   protected def cL: util.List[String]
 
   protected def vL: util.List[AnyRef]
 
   protected def prepareInsert: Insert
-
-  protected def prepareUpdate: Update.Where
 
   protected def getInsertBindValues(entity: T): Seq[AnyRef]
 
@@ -75,14 +67,10 @@ trait TenantReadSideTable[T <: Portfolio] {
     val insertRepositoryFuture = sessionPrepare(prepareInsert.toString)
     insertPromise.completeWith(insertRepositoryFuture)
 
-    val updateRepositoryFuture = sessionPrepare(prepareUpdate.toString)
-    updatePromise.completeWith(updateRepositoryFuture)
-
     val deleteRepositoryFuture = sessionPrepare(prepareDelete.toString)
     deletePromise.completeWith(deleteRepositoryFuture)
     for {
       _ <- insertRepositoryFuture
-      _ <- updateRepositoryFuture
       _ <- deleteRepositoryFuture
     } yield Done
   }
@@ -112,18 +100,6 @@ trait TenantReadSideTable[T <: Portfolio] {
             (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
     val bindV = getInsertBindValues(t)
     bindPrepare(insertPromise, bindV).map(x => Some(x))
-  }
-
-  def updateAdd(tenantId:String,holding:Holding)
-            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
-    val bindV = getUpdateAddBindValues(tenantId,holding)
-    bindPrepare(updatePromise, bindV).map(x => Some(x))
-  }
-
-  def updateDelete(tenantId:String,holding:Holding)
-               (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
-    val bindV = getUpdateDeleteBindValues(tenantId,holding)
-    bindPrepare(updatePromise, bindV).map(x => Some(x))
   }
 
   def delete(t: T)
@@ -179,28 +155,6 @@ object PortfolioByTenantIdTable extends TenantReadSideTable[Portfolio] {
 
   override protected def prepareDelete: Delete.Where  = QueryBuilder.delete().from(tableName)
     .where(QueryBuilder.eq(Columns.TenantId, QueryBuilder.bindMarker()))
-
-  override protected def prepareUpdate: Update.Where  = QueryBuilder.update(tableName)
-    .`with`(QueryBuilder.set(Columns.Holdings,QueryBuilder.bindMarker()))
-    .where(QueryBuilder.eq(Columns.TenantId, QueryBuilder.bindMarker()))
-
-  override protected def getUpdateAddBindValues(tenantId:String, holding:Holding): Seq[AnyRef]  = {
-    val bindValues: Seq[AnyRef] = Seq(
-      //s"holdings = holdings + ${Json.toJson(holding).toString()}",
-      Seq(Json.toJson(holding).toString()).toSet.asJava,
-      tenantId
-    )
-    bindValues
-  }
-
-  override protected def getUpdateDeleteBindValues(tenantId: String, holding: Holding): Seq[AnyRef] = {
-    val bindValues: Seq[AnyRef] = Seq(
-      s"holdings = holdings - ${Json.toJson(holding).toString()}",
-      tenantId
-    )
-    bindValues
-  }
-
 
   override protected def getDeleteBindValues(entity: Portfolio): Seq[AnyRef]  = {
     val bindValues: Seq[AnyRef] = Seq(

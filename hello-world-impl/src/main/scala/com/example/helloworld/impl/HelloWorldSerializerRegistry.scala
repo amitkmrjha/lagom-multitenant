@@ -27,8 +27,6 @@ object HelloWorldSerializerRegistry extends JsonSerializerRegistry {
 
     JsonSerializer[PortfolioAdded],
     JsonSerializer[PortfolioUpdated],
-    JsonSerializer[StockAddedToPortfolio],
-    JsonSerializer[StockRemovedFromPortfolio],
     JsonSerializer[PortfolioArchived],
     JsonSerializer[PortfolioState],
     // the replies use play-json as well

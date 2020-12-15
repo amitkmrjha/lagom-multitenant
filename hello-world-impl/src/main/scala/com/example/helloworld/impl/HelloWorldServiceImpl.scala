@@ -92,13 +92,32 @@ class HelloWorldServiceImpl(
       }
   }
 
+  /*
+
+    private def addToPortfolio(tenantId:String,holding:Holding):Option[Portfolio] =
+    portfolioOption
+      .map{p =>
+        val currentHoldings = p.holdings
+        val newHoldings = currentHoldings.filter(e => e.stockId!=holding.stockId):+ holding
+        p.copy(holdings = newHoldings)
+      }
+
+  private def removeFromPortfolio(tenantId:String,holding:Holding):Option[Portfolio] =
+    portfolioOption
+      .map(p =>  p.copy(holdings = p.holdings.filter(e => e!=holding) ))
+   */
+
   override def addStockToPortfolio(tenantId: String): ServiceCall[Holding, Portfolio] = ServiceCall { input =>
     portfolioEntityRef(tenantId)
       .ask(reply => GetPortfolio(reply))
       .map(spo => portfolioSummaryToResult(tenantId, spo))
-      .flatMap{ currentStock =>
+      .flatMap{ currentPortfolio =>
+
+        val currentHoldings = currentPortfolio.holdings
+        val newHoldings = currentHoldings.filter(e => e.stockId!=input.stockId):+ input
+        val newPortfolio = currentPortfolio.copy(holdings = newHoldings)
         portfolioEntityRef(tenantId)
-          .ask(reply => AddStockToPortfolio(tenantId,input, reply))
+          .ask(reply => UpdatePortfolio(newPortfolio, reply))
           .map { confirmation =>
             portfolioConfirmationToResult(tenantId, confirmation)
           }
@@ -109,9 +128,10 @@ class HelloWorldServiceImpl(
     portfolioEntityRef(tenantId)
       .ask(reply => GetPortfolio(reply))
       .map(spo => portfolioSummaryToResult(tenantId, spo))
-      .flatMap{ currentStock =>
+      .flatMap{ currentPortfolio =>
+        val newPortfolio = currentPortfolio.copy(holdings = currentPortfolio.holdings.filter(e => e!=input) )
         portfolioEntityRef(tenantId)
-          .ask(reply => RemoveStockFromPortfolio(tenantId,input, reply))
+          .ask(reply => UpdatePortfolio(newPortfolio, reply))
           .map { confirmation =>
             portfolioConfirmationToResult(tenantId, confirmation)
           }
