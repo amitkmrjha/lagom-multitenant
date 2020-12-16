@@ -7,7 +7,9 @@ import akka.persistence.cassandra.session.CassandraSessionSettings
 import akka.stream.scaladsl
 import com.datastax.driver.core.{BatchStatement, PreparedStatement, Row, Session, Statement}
 import com.lightbend.lagom.internal.persistence.cassandra.{CassandraKeyspaceConfig, CassandraReadSideSessionProvider}
+import com.typesafe.config.{ConfigFactory, ConfigObject, ConfigValue}
 
+import scala.collection.JavaConverters._
 import scala.annotation.varargs
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,9 +22,13 @@ class TenantCassandraSession(
     this(
       system,
       settings = CassandraSessionSettings(
+
+        system.settings.config.getConfig(
+          "tenant.persistence.read-side.cassandra"
+        ).withFallback(
         system.settings.config.getConfig(
           "lagom.persistence.read-side.cassandra"
-        )
+        ))
       ),
       executionContext = system.dispatchers.lookup(
         system.settings.config.getString(
@@ -32,6 +38,40 @@ class TenantCassandraSession(
     )
 
   private val log = Logging.getLogger(system, getClass)
+/*
+  val orignal = system.settings.config.getConfig(
+    "lagom.persistence.read-side.cassandra"
+  )
+
+  val tenantConfig = system.settings.config.getConfig(
+    "tenant.persistence.read-side.cassandra"
+  )
+
+  val finalConfig = tenantConfig.withFallback(orignal)
+
+  println(s"------------------------------------------")
+  println(s"------------------------------------------")
+  println(s"")
+  orignal.entrySet().asScala
+    .map(socialEntry => {
+      println(s"${socialEntry.getKey} = ${socialEntry.getValue}")
+    })
+  //println(s" test ${test.entrySet()}")
+  println(s"            tenant         ")
+  tenantConfig.entrySet().asScala
+    .map(socialEntry => {
+      println(s"${socialEntry.getKey} = ${socialEntry.getValue}")
+    })
+
+  println(s"            final         ")
+  finalConfig.entrySet().asScala
+    .map(socialEntry => {
+      println(s"${socialEntry.getKey} = ${socialEntry.getValue}")
+    })
+  println(s"")
+  println(s"------------------------------------------")
+  println(s"------------------------------------------")*/
+
 
   CassandraKeyspaceConfig.validateKeyspace("lagom.persistence.read-side.cassandra", system.settings.config, log)
 
@@ -40,6 +80,7 @@ class TenantCassandraSession(
     */
   private[lagom] val delegate: akka.persistence.cassandra.session.scaladsl.CassandraSession =
     CassandraReadSideSessionProvider(system, settings, executionContext)
+
 
   /**
     * The `Session` of the underlying
