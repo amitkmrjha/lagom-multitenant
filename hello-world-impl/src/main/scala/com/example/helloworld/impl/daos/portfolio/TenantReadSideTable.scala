@@ -6,7 +6,7 @@ import com.datastax.driver.core.querybuilder.{Delete, Insert, QueryBuilder, Upda
 import com.example.domain.{Holding, Portfolio}
 import com.example.helloworld.impl.daos.{ColumnFamilies, Columns}
 import com.example.helloworld.impl.daos.stock.ReadSideTable
-import com.lightbend.lagom.scaladsl.persistence.cassandra.TenantCassandraSession
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{TenantCassandraSession, TenantDataBaseId}
 import play.api.Logger
 import play.api.libs.json.Json
 
@@ -18,9 +18,9 @@ trait TenantReadSideTable[T <: Portfolio] {
 
   private val logger = Logger(this.getClass)
 
-  protected val insertPromise: Promise[PreparedStatement] = Promise[PreparedStatement]
+  protected val insertPromiseTenant: Promise[Map[TenantDataBaseId,PreparedStatement]] = Promise[Map[TenantDataBaseId,PreparedStatement]]
 
-  protected val deletePromise: Promise[PreparedStatement] = Promise[PreparedStatement]
+  protected val deletePromiseTenant: Promise[Map[TenantDataBaseId,PreparedStatement]] = Promise[Map[TenantDataBaseId,PreparedStatement]]
 
   protected def tableName: String
 
@@ -64,19 +64,19 @@ trait TenantReadSideTable[T <: Portfolio] {
 
   def prepareStatement()
                       (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
-    val insertRepositoryFuture = sessionPrepare(prepareInsert.toString)
-    insertPromise.completeWith(insertRepositoryFuture)
+    val iFuture = sessionPrepare(prepareInsert.toString)
+    insertPromiseTenant.completeWith(iFuture)
 
-    val deleteRepositoryFuture = sessionPrepare(prepareDelete.toString)
-    deletePromise.completeWith(deleteRepositoryFuture)
+    val dFuture = sessionPrepare(prepareDelete.toString)
+    insertPromiseTenant.completeWith(dFuture)
     for {
-      _ <- insertRepositoryFuture
-      _ <- deleteRepositoryFuture
+      _ <- iFuture
+      _ <- dFuture
     } yield Done
   }
 
   protected def sessionPrepare(stmt: String)
-                              (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[PreparedStatement] = {
+                              (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Map[TenantDataBaseId,PreparedStatement]] = {
     session.prepare(stmt).recover {
       case ex: Exception =>
         logger.error(s"Statement $stmt prepare error => ${ex.getMessage}", ex)
