@@ -10,8 +10,19 @@ trait TenantCassandraPersistenceComponents
     with TenantReadSideCassandraPersistenceComponents
     with WriteSideCassandraPersistenceComponents
 
-trait TenantReadSideCassandraPersistenceComponents extends ReadSideCassandraPersistenceComponents {
+trait TenantReadSideCassandraPersistenceComponents extends  ReadSidePersistenceComponents {
+
+  lazy val cassandraSession: CassandraSession                 = new CassandraSession(actorSystem)
+  lazy val testCasReadSideSettings: CassandraReadSideSettings = new CassandraReadSideSettings(actorSystem)
+
+  private[lagom] lazy val cassandraOffsetStore: CassandraOffsetStore =
+    new ScaladslCassandraOffsetStore(actorSystem, cassandraSession, testCasReadSideSettings, readSideConfig)(
+      executionContext
+    )
+  lazy val offsetStore: OffsetStore = cassandraOffsetStore
+
   lazy val tenantSession: TenantCassandraSession                 = new TenantCassandraSession(actorSystem)
-  override lazy val cassandraReadSide: CassandraReadSide =
+
+   lazy val cassandraReadSide: TenantCassandraReadSide =
     new TenantCassandraReadSideImpl(actorSystem, cassandraSession,tenantSession, cassandraOffsetStore)
 }

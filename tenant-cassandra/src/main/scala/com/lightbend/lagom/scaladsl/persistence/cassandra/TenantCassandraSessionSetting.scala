@@ -2,6 +2,7 @@ package com.lightbend.lagom.scaladsl.persistence.cassandra
 
 import akka.actor.ActorSystem
 import akka.persistence.cassandra.session.CassandraSessionSettings
+import com.datastax.driver.core.BoundStatement
 import com.typesafe.config.{ConfigObject, ConfigValue}
 
 import scala.collection.JavaConverters._
@@ -24,3 +25,4 @@ object TenantCassandraSessionSetting {
 
 case class TenantCassandraSessionSetting(tenantDataBase:TenantDataBaseId, setting:CassandraSessionSettings)
 case class TenantDataBaseId(tenantId:String)
+case class TenantBoundStatement(tenantId:TenantDataBaseId, boundStatement:BoundStatement)

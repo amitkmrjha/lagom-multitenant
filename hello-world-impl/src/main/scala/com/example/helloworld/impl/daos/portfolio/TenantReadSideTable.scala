@@ -6,7 +6,7 @@ import com.datastax.driver.core.querybuilder.{Delete, Insert, QueryBuilder, Upda
 import com.example.domain.{Holding, Portfolio}
 import com.example.helloworld.impl.daos.{ColumnFamilies, Columns}
 import com.example.helloworld.impl.daos.stock.ReadSideTable
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{TenantCassandraSession, TenantDataBaseId}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{TenantBoundStatement, TenantCassandraSession, TenantDataBaseId}
 import play.api.Logger
 import play.api.libs.json.Json
 
@@ -84,30 +84,37 @@ trait TenantReadSideTable[T <: Portfolio] {
     }
   }
 
-  protected def bindPrepare(ps: Promise[PreparedStatement], bindV: Seq[AnyRef])(implicit session: TenantCassandraSession, ec: ExecutionContext): Future[BoundStatement] = {
-    ps.future.map(x =>
+  protected def bindPrepare(ps: Promise[Map[TenantDataBaseId,PreparedStatement]], bindV: Seq[AnyRef])
+                           (implicit tenantDataBaseId: TenantDataBaseId,session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+    ps.future.map { x =>
+      val psOption = x.get(tenantDataBaseId)
       try {
-        x.bind(bindV: _*)
+        psOption.map { p =>
+          TenantBoundStatement(tenantDataBaseId, p.bind(bindV: _*))
+        }
       } catch {
         case ex: Exception =>
-          logger.error(s"bindPrepare ${x.getQueryString} => ${ex.getMessage}", ex)
+          logger.error(s"bindPrepare ${psOption} => ${ex.getMessage}", ex)
           throw ex
       }
-    )
+    }
   }
 
   def insert(t: T)
-            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
+            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+    implicit val tenantDataBaseId =  TenantDataBaseId(t.tenantId)
     val bindV = getInsertBindValues(t)
-    bindPrepare(insertPromise, bindV).map(x => Some(x))
+    bindPrepare(insertPromiseTenant, bindV)
   }
 
   def delete(t: T)
-            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
+            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+    implicit val tenantDataBaseId =  TenantDataBaseId(t.tenantId)
     val bindV = getDeleteBindValues(t)
-    bindPrepare(deletePromise, bindV).map(x => Some(x))
+    bindPrepare(insertPromiseTenant, bindV)
   }
 }
+
 object PortfolioByTenantIdTable extends TenantReadSideTable[Portfolio] {
   override protected def tableScript: String =
     s"""

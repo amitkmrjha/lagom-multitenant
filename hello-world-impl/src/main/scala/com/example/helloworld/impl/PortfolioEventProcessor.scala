@@ -2,15 +2,15 @@ package com.example.helloworld.impl
 
 import akka.Done
 import com.datastax.driver.core.{BoundStatement, PreparedStatement}
-import com.example.domain.{Holding, Portfolio}
+import com.example.domain.{Portfolio}
 import com.example.helloworld.impl.daos.portfolio.PortfolioByTenantIdTable
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEventTag, ReadSideProcessor}
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraReadSide, TenantCassandraSession}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{TenantCassandraReadSide, TenantCassandraSession}
 import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-class PortfolioEventProcessor (session:TenantCassandraSession,readSide:CassandraReadSide)
+class PortfolioEventProcessor (session:TenantCassandraSession,readSide:TenantCassandraReadSide)
                               (implicit ec: ExecutionContext) extends ReadSideProcessor[PortfolioEvent] {
 
   val logger = Logger(this.getClass)
@@ -70,14 +70,6 @@ class PortfolioEventProcessor (session:TenantCassandraSession,readSide:Cassandra
     session.executeCreateTable(tableScript).recover {
       case ex: Exception =>
         logger.error(s"Portfolio CreateTable $tableScript execute error => ${ex.getMessage}", ex)
-        throw ex
-    }
-  }
-
-  private def sessionPrepare(stmt: String): Future[PreparedStatement] = {
-    session.prepare(stmt).recover {
-      case ex: Exception =>
-        logger.error(s"Statement $stmt prepare error => ${ex.getMessage}", ex)
         throw ex
     }
   }

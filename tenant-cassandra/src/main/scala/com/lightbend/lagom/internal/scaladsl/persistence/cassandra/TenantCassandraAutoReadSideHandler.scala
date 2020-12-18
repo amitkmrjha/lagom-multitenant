@@ -8,7 +8,7 @@ import com.datastax.driver.core.{BatchStatement, BoundStatement}
 import com.lightbend.lagom.internal.persistence.cassandra.{CassandraOffsetDao, CassandraOffsetStore}
 import com.lightbend.lagom.scaladsl.persistence.ReadSideProcessor.ReadSideHandler
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, EventStreamElement}
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraSession, TenantCassandraSession}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraSession, TenantBoundStatement, TenantCassandraSession, TenantDataBaseId}
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable
@@ -24,16 +24,25 @@ abstract class TenantCassandraReadSideHandler[Event <: AggregateEvent[Event], Ha
   extends ReadSideHandler[Event] {
   private val log = LoggerFactory.getLogger(this.getClass)
 
-  protected def invoke(handler: Handler, event: EventStreamElement[Event]): Future[immutable.Seq[BoundStatement]]
+  protected def invoke(handler: Handler, event: EventStreamElement[Event]): Future[(immutable.Seq[TenantBoundStatement],BoundStatement)]
 
   override def handle(): Flow[EventStreamElement[Event], Done, NotUsed] = {
-    def executeStatements(statements: Seq[BoundStatement]): Future[Done] = {
-      val batch = new BatchStatement
-      // statements is never empty, there is at least the store offset statement
-      // for simplicity we just use batch api (even if there is only one)
-      batch.addAll(statements.asJava)
-      tenantSession.executeWriteBatch(batch)
-      //session.executeWriteBatch(batch)
+
+    def executeStatements(statements: Seq[TenantBoundStatement], offSetBoundStatement:BoundStatement): Future[Done] = {
+      val batchByTenant: Map[String, Seq[TenantBoundStatement]] = statements.groupBy(_.tenantId.tenantId)
+      val tenantExecute : Seq[Future[Done]] = batchByTenant.map{
+        case (k,v) =>
+          if(!v.isEmpty){
+            val batch = new BatchStatement
+            // statements is never empty, there is at least the store offset statement
+            // for simplicity we just use batch api (even if there is only one)
+            batch.addAll(v.map(_.boundStatement).asJava)
+            tenantSession.executeWriteBatch(batch)(TenantDataBaseId(k))
+          }else{
+            Future.successful(Done)
+          }
+      }.toSeq
+      Future.sequence(tenantExecute).flatMap(_ => session.executeWrite(offSetBoundStatement))
     }
 
     Flow[EventStreamElement[Event]]
@@ -50,8 +59,7 @@ abstract class TenantCassandraReadSideHandler[Event <: AggregateEvent[Event], Ha
               TenantCassandraAutoReadSideHandler.emptyHandler.asInstanceOf[Handler]
             }
           )
-
-        invoke(handler, elem).flatMap(executeStatements)
+        invoke(handler, elem).flatMap(p => executeStatements(p._1,p._2))
       }
       .withAttributes(ActorAttributes.dispatcher(dispatcher))
   }
@@ -81,12 +89,14 @@ class TenantCassandraAutoReadSideHandler [Event <: AggregateEvent[Event]](
   protected override def invoke(
                                  handler: Handler[Event],
                                  element: EventStreamElement[Event]
-                               ): Future[immutable.Seq[BoundStatement]] = {
+                               ): Future[(immutable.Seq[TenantBoundStatement],BoundStatement)] = {
     for {
       statements <- handler
-        .asInstanceOf[EventStreamElement[Event] => Future[immutable.Seq[BoundStatement]]]
+        .asInstanceOf[EventStreamElement[Event] => Future[immutable.Seq[TenantBoundStatement]]]
         .apply(element)
-    } yield statements :+ offsetDao.bindSaveOffset(element.offset)
+    } yield {
+      (statements ,offsetDao.bindSaveOffset(element.offset))
+    }
   }
 
   protected def offsetStatement(offset: Offset): immutable.Seq[BoundStatement] =
@@ -108,8 +118,8 @@ class TenantCassandraAutoReadSideHandler [Event <: AggregateEvent[Event]](
 }
 
 object TenantCassandraAutoReadSideHandler {
-  type Handler[Event] = (EventStreamElement[_ <: Event]) => Future[immutable.Seq[BoundStatement]]
+  type Handler[Event] = (EventStreamElement[_ <: Event]) => Future[immutable.Seq[TenantBoundStatement]]
 
   def emptyHandler[Event]: Handler[Event] =
-    (_) => Future.successful(immutable.Seq.empty[BoundStatement])
+    (_) => Future.successful(immutable.Seq.empty[TenantBoundStatement])
 }
