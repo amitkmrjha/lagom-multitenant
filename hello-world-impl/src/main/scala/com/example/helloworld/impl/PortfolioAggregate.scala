@@ -122,7 +122,7 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
     if(isActive){
       cmd match {
         case GetPortfolio(replyTo)  => onGet(replyTo)
-        case x: AddPortfolio => reply(x.replyTo)(PortfolioRejected(s"Portfolio already exist with Id ${portfolioOption.get.tenantId}."))
+        case x: AddPortfolio => reply(x.replyTo)(PortfolioRejected(s"Portfolio already exist with Id ${Portfolio.getEntityId(portfolioOption.get)}."))
         case x: UpdatePortfolio => onUpdatePortfolio(x)
         case x: ArchivePortfolio => onArchivePortfolio(x)
       }
@@ -130,8 +130,8 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
       cmd match {
         case GetPortfolio(replyTo)  => reply(replyTo)(PortfolioSummary(None))
         case x: AddPortfolio => onAddPortfolio(x)
-        case x: UpdatePortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${x.portfolio.tenantId}"))
-        case x: ArchivePortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${x.portfolio.tenantId}"))
+        case x: UpdatePortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${Portfolio.getEntityId(x.portfolio)}"))
+        case x: ArchivePortfolio => reply(x.replyTo)(PortfolioRejected(s"No portfolio found with id ${Portfolio.getEntityId(x.portfolio)}"))
       }
     }
   }
@@ -169,17 +169,6 @@ case class PortfolioState(portfolioOption: Option[Portfolio], timestamp: String)
     copy(None, LocalDateTime.now().toString)
   }
 
-  private def addToPortfolio(tenantId:String,holding:Holding):Option[Portfolio] =
-    portfolioOption
-      .map{p =>
-        val currentHoldings = p.holdings
-        val newHoldings = currentHoldings.filter(e => e.stockId!=holding.stockId):+ holding
-        p.copy(holdings = newHoldings)
-      }
-
-  private def removeFromPortfolio(tenantId:String,holding:Holding):Option[Portfolio] =
-    portfolioOption
-      .map(p =>  p.copy(holdings = p.holdings.filter(e => e!=holding) ))
 }
 
 object PortfolioState {

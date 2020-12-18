@@ -26,9 +26,10 @@ class PortfolioDao (session: TenantCassandraSession)
   }
 
   protected def convert(r: Row): Portfolio = {
-    Portfolio(tenantId(r),holdings(r))
+    val ids = Portfolio.getPortfolioIds(tenantId(r))
+    Portfolio(ids._1,ids._2,holdings(r))
   }
 
-  private def tenantId(r: Row): String =  r.getString(Columns.TenantId)
+  private def tenantId(r: Row): String =  r.getString(Columns.PortfolioEntityID)
   private def holdings(r: Row): Seq[Holding] =  r.getSet(Columns.Holdings,classOf[String]).asScala.map(str => Json.parse(str).as[Holding]).toSeq
 }

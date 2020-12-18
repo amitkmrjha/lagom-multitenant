@@ -12,7 +12,7 @@ package object daos {
     val Name: String = "name"
     val Price: String = "price"
 
-    val TenantId: String = "tenant_id"
+    val PortfolioEntityID: String = "id"
     val Holdings: String = "holdings"
   }
 }

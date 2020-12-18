@@ -6,6 +6,7 @@ scalaVersion in ThisBuild := "2.13.0"
 
 val macwire = "com.softwaremill.macwire" %% "macros" % "2.3.3" % "provided"
 val scalaTest = "org.scalatest" %% "scalatest" % "3.1.1" % Test
+val playJsonDerivedCodecs = "org.julienrf" %% "play-json-derived-codecs" % "7.0.0"
 
 lazy val `hello-world` = (project in file("."))
   .aggregate(`common`,`hello-world-api`, `hello-world-impl`)
@@ -29,7 +30,8 @@ lazy val `tenant-cassandra` = (project in file("tenant-cassandra"))
 lazy val `hello-world-api` = (project in file("hello-world-api"))
   .settings(
     libraryDependencies ++= Seq(
-      lagomScaladslApi
+      lagomScaladslApi,
+      playJsonDerivedCodecs
     )
   ).dependsOn(`common`)
 

@@ -68,7 +68,7 @@ trait TenantReadSideTable[T <: Portfolio] {
     insertPromiseTenant.completeWith(iFuture)
 
     val dFuture = sessionPrepare(prepareDelete.toString)
-    insertPromiseTenant.completeWith(dFuture)
+    deletePromiseTenant.completeWith(dFuture)
     for {
       _ <- iFuture
       _ <- dFuture
@@ -111,7 +111,7 @@ trait TenantReadSideTable[T <: Portfolio] {
             (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
     implicit val tenantDataBaseId =  TenantDataBaseId(t.tenantId)
     val bindV = getDeleteBindValues(t)
-    bindPrepare(insertPromiseTenant, bindV)
+    bindPrepare(deletePromiseTenant, bindV)
   }
 }
 
@@ -119,14 +119,14 @@ object PortfolioByTenantIdTable extends TenantReadSideTable[Portfolio] {
   override protected def tableScript: String =
     s"""
         CREATE TABLE IF NOT EXISTS $tableName (
-          ${Columns.TenantId} text,
+          ${Columns.PortfolioEntityID} text,
           ${Columns.Holdings} Set<text>,
           PRIMARY KEY (${primaryKey})
         )
       """.stripMargin
 
   override protected def fields: Seq[String]  = Seq(
-    Columns.TenantId,
+    Columns.PortfolioEntityID,
     Columns.Holdings
   )
 
@@ -140,7 +140,7 @@ object PortfolioByTenantIdTable extends TenantReadSideTable[Portfolio] {
   override protected def getInsertBindValues(entity: Portfolio): Seq[AnyRef] = {
     val holdings: util.Set[String] = entity.holdings.map(h => Json.toJson(h).toString()).toSet.asJava
     val bindValues: Seq[AnyRef] = fields.map(x => x match {
-      case Columns.TenantId => entity.tenantId
+      case Columns.PortfolioEntityID => Portfolio.getEntityId(entity)
       case Columns.Holdings => holdings
     })
     bindValues
@@ -158,14 +158,14 @@ object PortfolioByTenantIdTable extends TenantReadSideTable[Portfolio] {
 
   override protected def tableName: String  = ColumnFamilies.PortfolioById
 
-  override protected def primaryKey: String = s"${Columns.TenantId}"
+  override protected def primaryKey: String = s"${Columns.PortfolioEntityID}"
 
   override protected def prepareDelete: Delete.Where  = QueryBuilder.delete().from(tableName)
-    .where(QueryBuilder.eq(Columns.TenantId, QueryBuilder.bindMarker()))
+    .where(QueryBuilder.eq(Columns.PortfolioEntityID, QueryBuilder.bindMarker()))
 
   override protected def getDeleteBindValues(entity: Portfolio): Seq[AnyRef]  = {
     val bindValues: Seq[AnyRef] = Seq(
-      entity.tenantId
+      Portfolio.getEntityId(entity)
     )
     bindValues
   }
