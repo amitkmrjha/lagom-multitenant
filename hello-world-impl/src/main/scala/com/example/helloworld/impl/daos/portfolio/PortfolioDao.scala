@@ -3,7 +3,7 @@ package com.example.helloworld.impl.daos.portfolio
 import com.datastax.driver.core.Row
 import com.example.domain.{Holding, Portfolio}
 import com.example.helloworld.impl.daos.Columns
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{TenantCassandraSession, TenantDataBaseId}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraSession}
 
 import scala.collection.JavaConverters._
 import play.api.Logger
@@ -11,17 +11,17 @@ import play.api.libs.json.Json
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class PortfolioDao (session: TenantCassandraSession)
+class PortfolioDao (session: CassandraSession)
                    (implicit ec: ExecutionContext){
 
   private val logger = Logger(this.getClass)
-  def getAll(implicit tenantDataBaseId:TenantDataBaseId):Future[Seq[Portfolio]] = sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString)
+  def getAll:Future[Seq[Portfolio]] = sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString)
 
-  protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantDataBaseId): Future[Seq[Portfolio]] = {
+  protected def sessionSelectAll(queryString: String): Future[Seq[Portfolio]] = {
     session.selectAll(queryString).map(_.map(convert))
   }
 
-  protected def sessionSelectOne(queryString: String)(implicit tenantDataBaseId:TenantDataBaseId): Future[Option[Portfolio]] = {
+  protected def sessionSelectOne(queryString: String): Future[Option[Portfolio]] = {
     session.selectOne(queryString).map(_.map(convert))
   }
 

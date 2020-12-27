@@ -5,12 +5,12 @@ import com.datastax.driver.core.{BoundStatement, PreparedStatement}
 import com.example.domain.{Portfolio}
 import com.example.helloworld.impl.daos.portfolio.PortfolioByTenantIdTable
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEventTag, ReadSideProcessor}
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{TenantCassandraReadSide, TenantCassandraSession}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraReadSide, CassandraSession}
 import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-class PortfolioEventProcessor (session:TenantCassandraSession,readSide:TenantCassandraReadSide)
+class PortfolioEventProcessor (session:CassandraSession,readSide:CassandraReadSide)
                               (implicit ec: ExecutionContext) extends ReadSideProcessor[PortfolioEvent] {
 
   val logger = Logger(this.getClass)

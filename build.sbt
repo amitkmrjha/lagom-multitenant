@@ -19,14 +19,6 @@ lazy val `common` = (project in file("common"))
     )
   )
 
-lazy val `tenant-cassandra` = (project in file("tenant-cassandra"))
-  .settings(
-    libraryDependencies ++= Seq(
-      lagomScaladslPersistenceCassandra,
-      scalaTest
-    )
-  )
-
 lazy val `hello-world-api` = (project in file("hello-world-api"))
   .settings(
     libraryDependencies ++= Seq(
@@ -47,4 +39,4 @@ lazy val `hello-world-impl` = (project in file("hello-world-impl"))
     )
   )
   .settings(lagomForkedTestSettings)
-  .dependsOn(`common`,`tenant-cassandra`,`hello-world-api`)
+  .dependsOn(`common`,`hello-world-api`)

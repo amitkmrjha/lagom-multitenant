@@ -6,7 +6,7 @@ import com.datastax.driver.core.querybuilder.{Delete, Insert, QueryBuilder, Upda
 import com.example.domain.{Holding, Portfolio}
 import com.example.helloworld.impl.daos.{ColumnFamilies, Columns}
 import com.example.helloworld.impl.daos.stock.ReadSideTable
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{TenantBoundStatement, TenantCassandraSession, TenantDataBaseId}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{ CassandraSession}
 import play.api.Logger
 import play.api.libs.json.Json
 
@@ -18,9 +18,9 @@ trait TenantReadSideTable[T <: Portfolio] {
 
   private val logger = Logger(this.getClass)
 
-  protected val insertPromiseTenant: Promise[Map[TenantDataBaseId,PreparedStatement]] = Promise[Map[TenantDataBaseId,PreparedStatement]]
+  protected val insertPromise: Promise[PreparedStatement] = Promise[PreparedStatement]
 
-  protected val deletePromiseTenant: Promise[Map[TenantDataBaseId,PreparedStatement]] = Promise[Map[TenantDataBaseId,PreparedStatement]]
+  protected val deletePromise: Promise[PreparedStatement] = Promise[PreparedStatement]
 
   protected def tableName: String
 
@@ -47,14 +47,14 @@ trait TenantReadSideTable[T <: Portfolio] {
   protected def getCountQueryString: String
 
   def createTable()
-                 (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
+                 (implicit session: CassandraSession, ec: ExecutionContext): Future[Done] = {
     for {
       _ <- sessionExecuteCreateTable(tableScript)
     } yield Done
   }
 
   protected def sessionExecuteCreateTable(tableScript: String)
-                                         (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
+                                         (implicit session: CassandraSession, ec: ExecutionContext): Future[Done] = {
     session.executeCreateTable(tableScript).recover {
       case ex: Exception =>
         logger.error(s"Store MS CreateTable $tableScript execute error => ${ex.getMessage}", ex)
@@ -63,20 +63,19 @@ trait TenantReadSideTable[T <: Portfolio] {
   }
 
   def prepareStatement()
-                      (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
-    val iFuture = sessionPrepare(prepareInsert.toString)
-    insertPromiseTenant.completeWith(iFuture)
-
-    val dFuture = sessionPrepare(prepareDelete.toString)
-    deletePromiseTenant.completeWith(dFuture)
+                      (implicit session: CassandraSession, ec: ExecutionContext): Future[Done] = {
+    val insertRepositoryFuture = sessionPrepare(prepareInsert.toString)
+    insertPromise.completeWith(insertRepositoryFuture)
+    val deleteRepositoryFuture = sessionPrepare(prepareDelete.toString)
+    deletePromise.completeWith(deleteRepositoryFuture)
     for {
-      _ <- iFuture
-      _ <- dFuture
+      _ <- insertRepositoryFuture
+      _ <- deleteRepositoryFuture
     } yield Done
   }
 
   protected def sessionPrepare(stmt: String)
-                              (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Map[TenantDataBaseId,PreparedStatement]] = {
+                              (implicit session: CassandraSession, ec: ExecutionContext): Future[PreparedStatement] = {
     session.prepare(stmt).recover {
       case ex: Exception =>
         logger.error(s"Statement $stmt prepare error => ${ex.getMessage}", ex)
@@ -84,34 +83,28 @@ trait TenantReadSideTable[T <: Portfolio] {
     }
   }
 
-  protected def bindPrepare(ps: Promise[Map[TenantDataBaseId,PreparedStatement]], bindV: Seq[AnyRef])
-                           (implicit tenantDataBaseId: TenantDataBaseId,session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
-    ps.future.map { x =>
-      val psOption = x.get(tenantDataBaseId)
+  protected def bindPrepare(ps: Promise[PreparedStatement], bindV: Seq[AnyRef])(implicit session: CassandraSession, ec: ExecutionContext): Future[BoundStatement] = {
+    ps.future.map(x =>
       try {
-        psOption.map { p =>
-          TenantBoundStatement(tenantDataBaseId, p.bind(bindV: _*))
-        }
+        x.bind(bindV: _*)
       } catch {
         case ex: Exception =>
-          logger.error(s"bindPrepare ${psOption} => ${ex.getMessage}", ex)
+          logger.error(s"bindPrepare ${x.getQueryString} => ${ex.getMessage}", ex)
           throw ex
       }
-    }
+    )
   }
 
   def insert(t: T)
-            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
-    implicit val tenantDataBaseId =  TenantDataBaseId(t.tenantId)
+            (implicit session: CassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
     val bindV = getInsertBindValues(t)
-    bindPrepare(insertPromiseTenant, bindV)
+    bindPrepare(insertPromise, bindV).map(x => Some(x))
   }
 
   def delete(t: T)
-            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
-    implicit val tenantDataBaseId =  TenantDataBaseId(t.tenantId)
+            (implicit session: CassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
     val bindV = getDeleteBindValues(t)
-    bindPrepare(deletePromiseTenant, bindV)
+    bindPrepare(deletePromise, bindV).map(x => Some(x))
   }
 }
 

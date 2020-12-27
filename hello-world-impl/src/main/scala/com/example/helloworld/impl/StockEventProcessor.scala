@@ -2,7 +2,7 @@ package com.example.helloworld.impl
 
 import akka.Done
 import com.example.domain.Stock
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraReadSide, CassandraSession, TenantCassandraSession}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraReadSide, CassandraSession}
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEventTag, ReadSideProcessor}
 import com.datastax.driver.core.{BoundStatement, PreparedStatement}
 import com.example.helloworld.impl.daos.stock.StockByIdTable
