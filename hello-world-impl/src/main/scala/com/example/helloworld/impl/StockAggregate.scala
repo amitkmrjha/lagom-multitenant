@@ -27,6 +27,7 @@ object StockBehavior {
         AkkaTaggerAdapter.fromLagom(entityContext, StockEvent.Tag)
       ).withJournalPluginId("tenant.cassandra-journal-plugin.t2")
       .withSnapshotPluginId("tenant.cassandra-snapshot-store-plugin.t2")
+
   }
   /*
    * This method is extracted to write unit tests that are completely independendant to Akka Cluster.

@@ -154,12 +154,12 @@ class HelloWorldServiceImpl(
     summary.portfolioOption.getOrElse(throw BadRequest(s"portfolio with id ${stockId} not found."))
   }
 
-  override def helloWorldTopic(): Topic[api.HelloWorldEvent] =
+  /*override def helloWorldTopic(): Topic[api.HelloWorldEvent] =
     TopicProducer.singleStreamWithOffset { fromOffset =>
       persistentEntityRegistry
         .eventStream(PortfolioEvent.Tag, fromOffset)
         .map(ev => (convertEvent(ev), ev.offset))
-    }
+    }*/
   private def convertEvent(
                             portfolioEvent: EventStreamElement[PortfolioEvent]
                           ): api.HelloWorldEvent = {
