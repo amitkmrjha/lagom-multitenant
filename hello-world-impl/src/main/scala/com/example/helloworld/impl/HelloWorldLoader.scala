@@ -3,13 +3,12 @@ package com.example.helloworld.impl
 import akka.cluster.sharding.typed.scaladsl.Entity
 import com.lightbend.lagom.scaladsl.api.ServiceLocator
 import com.lightbend.lagom.scaladsl.api.ServiceLocator.NoServiceLocator
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraPersistenceComponents}
+import com.lightbend.lagom.scaladsl.persistence.cassandra.CassandraPersistenceComponents
 import com.lightbend.lagom.scaladsl.server._
 import com.lightbend.lagom.scaladsl.devmode.LagomDevModeComponents
 import play.api.libs.ws.ahc.AhcWSComponents
 import com.example.helloworld.api.HelloWorldService
 import com.example.helloworld.impl.daos.stock.StockDao
-import com.lightbend.lagom.scaladsl.broker.kafka.LagomKafkaComponents
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
 
@@ -29,7 +28,6 @@ class HelloWorldLoader extends LagomApplicationLoader {
 abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
     with CassandraPersistenceComponents
-    /*with LagomKafkaComponents*/
     with AhcWSComponents {
 
   // Bind the service that this server provides
