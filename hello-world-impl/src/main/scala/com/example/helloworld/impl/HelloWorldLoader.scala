@@ -40,8 +40,8 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   lazy val stockDao: StockDao = wire[StockDao]
 
-  readSide.register(wire[StockEventProcessor])
-  readSide.register(wire[PortfolioEventProcessor])
+  //readSide.register(wire[StockEventProcessor])
+  //readSide.register(wire[PortfolioEventProcessor])
 
   // Initialize the sharding of the Aggregate. The following starts the aggregate Behavior under
   // a given sharding entity typeKey.
