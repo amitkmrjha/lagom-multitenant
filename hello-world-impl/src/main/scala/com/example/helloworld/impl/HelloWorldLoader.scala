@@ -29,7 +29,7 @@ class HelloWorldLoader extends LagomApplicationLoader {
 abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
     with CassandraPersistenceComponents
-    with LagomKafkaComponents
+    /*with LagomKafkaComponents*/
     with AhcWSComponents {
 
   // Bind the service that this server provides
