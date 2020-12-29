@@ -19,15 +19,7 @@ object StockBehavior {
     */
   def create(entityContext: EntityContext[StockCommand],tenantPlugin: TenantPersistencePlugin): Behavior[StockCommand] = {
 
-    import com.example.helloworld.impl.tenant.TenantClusterSharding._
-
-      val p = toTenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
-    println()
-    println(s"Stock Behavior Create ${p.name}")
-    println()
-
-      val persistenceId: PersistenceId = PersistenceId(p.name, entityContext.entityId)
-
+     val persistenceId: PersistenceId = PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
      create(persistenceId)
         .withTagger(
           // Using Akka Persistence Typed in Lagom requires tagging your events

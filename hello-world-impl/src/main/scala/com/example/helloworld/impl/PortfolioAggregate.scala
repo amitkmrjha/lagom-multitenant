@@ -205,11 +205,8 @@ object PortfolioBehavior {
     * Given a sharding [[EntityContext]] this function produces an Akka [[Behavior]] for the aggregate.
     */
   def create(entityContext: EntityContext[PortfolioCommand],tenantPlugin:TenantPersistencePlugin): Behavior[PortfolioCommand] = {
-    import com.example.helloworld.impl.tenant.TenantClusterSharding._
 
-    val p: EntityTypeKey[PortfolioCommand] = toTenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
-
-    val persistenceId: PersistenceId = PersistenceId(p.name, entityContext.entityId)
+    val persistenceId: PersistenceId = PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
       create(persistenceId)
         .withTagger(
           // Using Akka Persistence Typed in Lagom requires tagging your events

@@ -25,9 +25,9 @@ class TenantClusterSharding(system:ActorSystem,clusterSharding: ClusterSharding,
   }
   def initStock(tenants:Seq[TenantPersistencePlugin]):Unit= {
     tenants.map{t =>
-      val portfolioTypeKey = toTenantTypeKey(StockState.typeKey)(t.tenantPersistenceId)
+      val stockTypeKey = toTenantTypeKey(StockState.typeKey)(t.tenantPersistenceId)
       clusterSharding.init(
-        Entity(portfolioTypeKey)(
+        Entity(stockTypeKey)(
           entityContext => StockBehavior.create(entityContext,t)
         )
       )
