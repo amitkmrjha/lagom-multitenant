@@ -1,5 +1,6 @@
 package com.example.helloworld.impl
 
+import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.Entity
 import com.lightbend.lagom.scaladsl.api.ServiceLocator
 import com.lightbend.lagom.scaladsl.api.ServiceLocator.NoServiceLocator
@@ -9,6 +10,7 @@ import com.lightbend.lagom.scaladsl.devmode.LagomDevModeComponents
 import play.api.libs.ws.ahc.AhcWSComponents
 import com.example.helloworld.api.HelloWorldService
 import com.example.helloworld.impl.daos.stock.StockDao
+import com.example.helloworld.impl.tenant.{TenantPersistenceComponent, TenantPersistencePlugin}
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
 
@@ -27,7 +29,7 @@ class HelloWorldLoader extends LagomApplicationLoader {
 
 abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
-    with CassandraPersistenceComponents
+    with TenantPersistenceComponent
     with AhcWSComponents {
 
   // Bind the service that this server provides
@@ -43,6 +45,23 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   // Initialize the sharding of the Aggregate. The following starts the aggregate Behavior under
   // a given sharding entity typeKey.
+  tenantClusterSharding.init(
+    tenantPlugins.map{ t =>
+      Entity(PortfolioState.typeKey)(
+        entityContext => PortfolioBehavior.create(entityContext,t)
+      )
+    }.toSeq
+
+
+  )
+  tenantClusterSharding.init(
+    tenantPlugins.map { t =>
+      Entity(StockState.typeKey)(
+        entityContext =>StockBehavior.create(entityContext,t)
+      )
+    }.toSeq
+  )
+  /*
   clusterSharding.init(
     Entity(StockState.typeKey)(
       entityContext => StockBehavior.create(entityContext)
@@ -53,6 +72,6 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
     Entity(PortfolioState.typeKey)(
       entityContext => PortfolioBehavior.create(entityContext)
     )
-  )
+  )*/
 
 }

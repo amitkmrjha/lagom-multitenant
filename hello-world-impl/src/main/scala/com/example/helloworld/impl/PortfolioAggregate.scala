@@ -6,6 +6,7 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.Effect.reply
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplyEffect}
 import com.example.domain.{Holding, Portfolio, Stock}
+import com.example.helloworld.impl.tenant.{TenantEntityBehaviour, TenantPersistenceId, TenantPersistencePlugin}
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, AkkaTaggerAdapter}
 import play.api.libs.json.{Format, JsResult, JsValue, Json}
 
@@ -203,21 +204,19 @@ object PortfolioBehavior {
   /**
     * Given a sharding [[EntityContext]] this function produces an Akka [[Behavior]] for the aggregate.
     */
-  def create(entityContext: EntityContext[PortfolioCommand]): Behavior[PortfolioCommand] = {
-    val persistenceId: PersistenceId = PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
-    //.withJournalPluginId("tenant.cassandra-plugin.t1.journal")
+  def create(entityContext: EntityContext[PortfolioCommand],tenantPlugin:TenantPersistencePlugin): Behavior[PortfolioCommand] = {
+    import com.example.helloworld.impl.tenant.TenantClusterSharding._
 
-    println(s"")
-
-    create(persistenceId)
-      .withTagger(
-        // Using Akka Persistence Typed in Lagom requires tagging your events
-        // in Lagom-compatible way so Lagom ReadSideProcessors and TopicProducers
-        // can locate and follow the event streams.
-        AkkaTaggerAdapter.fromLagom(entityContext, PortfolioEvent.Tag)
-      ).withJournalPluginId("tenant.cassandra-journal-plugin.t1")
-      .withSnapshotPluginId("tenant.cassandra-snapshot-store-plugin.t1")
-
+      val p: EntityTypeKey[PortfolioCommand] = tenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
+      val persistenceId: PersistenceId = PersistenceId(p.name, entityContext.entityId)
+      create(persistenceId)
+        .withTagger(
+          // Using Akka Persistence Typed in Lagom requires tagging your events
+          // in Lagom-compatible way so Lagom ReadSideProcessors and TopicProducers
+          // can locate and follow the event streams.
+          AkkaTaggerAdapter.fromLagom(entityContext, PortfolioEvent.Tag)
+        ).withJournalPluginId(s"tenant.cassandra-journal-plugin.${tenantPlugin.tenantPersistenceId.tenantId}")
+        .withSnapshotPluginId(s"tenant.cassandra-snapshot-store-plugin.${tenantPlugin.tenantPersistenceId.tenantId}")
   }
   /*
    * This method is extracted to write unit tests that are completely independendant to Akka Cluster.

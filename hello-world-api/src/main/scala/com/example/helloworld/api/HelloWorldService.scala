@@ -23,10 +23,10 @@ object HelloWorldService  {
   */
 trait HelloWorldService extends Service {
 
-  def addStock: ServiceCall[Stock, Stock]
-  def updateStockPrice(stockId: String, price:Double) : ServiceCall[NotUsed, Stock]
-  def getStock(stockId: String): ServiceCall[NotUsed, Stock]
-  def getAllStock: ServiceCall[NotUsed, Seq[Stock]]
+  def addStock(tenantId:String): ServiceCall[Stock, Stock]
+  def updateStockPrice(tenantId:String,stockId: String, price:Double) : ServiceCall[NotUsed, Stock]
+  def getStock(tenantId:String,stockId: String): ServiceCall[NotUsed, Stock]
+  def getAllStock(tenantId:String): ServiceCall[NotUsed, Seq[Stock]]
 
   def createPortfolio(tenantId:String,portfolioId:String) : ServiceCall[Seq[Holding], Portfolio]
   def updatePortfolio(tenantId:String,portfolioId:String) : ServiceCall[Seq[Holding], Portfolio]
@@ -45,10 +45,10 @@ trait HelloWorldService extends Service {
     // @formatter:off
     named("hello-world")
       .withCalls(
-        restCall(Method.POST, "/api/v1/stock", addStock _),
-        restCall(Method.PUT, "/api/v1/stock/:stockId/price/:price", updateStockPrice _),
-        restCall(Method.GET, "/api/v1/stock/:stockId", getStock _),
-        restCall(Method.GET, "/api/v1/stock", getAllStock _),
+        restCall(Method.POST, "/api/v1/stock/:tenantId", addStock _),
+        restCall(Method.PUT, "/api/v1/stock/:tenantId/:stockId/price/:price", updateStockPrice _),
+        restCall(Method.GET, "/api/v1/stock/:tenantId/:stockId", getStock _),
+        restCall(Method.GET, "/api/v1/stock/:tenantId", getAllStock _),
 
         restCall(Method.POST, "/api/v1/portfolio/:tenantId/:portfolioId", createPortfolio _),
         restCall(Method.PUT, "/api/v1/portfolio/:tenantId/:portfolioId", updatePortfolio _),

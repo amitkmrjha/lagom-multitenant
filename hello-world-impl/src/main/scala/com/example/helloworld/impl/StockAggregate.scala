@@ -5,7 +5,8 @@ import akka.cluster.sharding.typed.scaladsl.{EntityContext, EntityTypeKey}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.Effect.reply
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplyEffect}
-import com.example.domain.{Stock}
+import com.example.domain.Stock
+import com.example.helloworld.impl.tenant.{TenantEntityBehaviour, TenantPersistencePlugin}
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, AkkaTaggerAdapter}
 import play.api.libs.json.{Format, JsResult, JsValue, Json}
 
@@ -16,18 +17,21 @@ object StockBehavior {
   /**
     * Given a sharding [[EntityContext]] this function produces an Akka [[Behavior]] for the aggregate.
     */
-  def create(entityContext: EntityContext[StockCommand]): Behavior[StockCommand] = {
-    val persistenceId: PersistenceId = PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
+  def create(entityContext: EntityContext[StockCommand],tenantPlugin: TenantPersistencePlugin): Behavior[StockCommand] = {
 
-    create(persistenceId)
-      .withTagger(
-        // Using Akka Persistence Typed in Lagom requires tagging your events
-        // in Lagom-compatible way so Lagom ReadSideProcessors and TopicProducers
-        // can locate and follow the event streams.
-        AkkaTaggerAdapter.fromLagom(entityContext, StockEvent.Tag)
-      ).withJournalPluginId("tenant.cassandra-journal-plugin.t2")
-      .withSnapshotPluginId("tenant.cassandra-snapshot-store-plugin.t2")
+    import com.example.helloworld.impl.tenant.TenantClusterSharding._
 
+      val p = tenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
+      val persistenceId: PersistenceId = PersistenceId(p.name, entityContext.entityId)
+
+     create(persistenceId)
+        .withTagger(
+          // Using Akka Persistence Typed in Lagom requires tagging your events
+          // in Lagom-compatible way so Lagom ReadSideProcessors and TopicProducers
+          // can locate and follow the event streams.
+          AkkaTaggerAdapter.fromLagom(entityContext, StockEvent.Tag)
+        ).withJournalPluginId(s"tenant.cassandra-journal-plugin.${tenantPlugin.tenantPersistenceId.tenantId}")
+        .withSnapshotPluginId(s"tenant.cassandra-snapshot-store-plugin.${tenantPlugin.tenantPersistenceId.tenantId}")
   }
   /*
    * This method is extracted to write unit tests that are completely independendant to Akka Cluster.
