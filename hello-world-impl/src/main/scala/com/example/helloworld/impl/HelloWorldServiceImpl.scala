@@ -39,10 +39,10 @@ class HelloWorldServiceImpl(
   private def stockEntityRef(id: String)(implicit tenantPersistenceId: TenantPersistenceId): EntityRef[StockCommand] =
     tenantClusterSharding.entityRefFor(StockState.typeKey, id)
 
-  private def portfolioEntityRef(tenantId:String,portfolioId:String)(implicit tenantPersistenceId: TenantPersistenceId): EntityRef[PortfolioCommand] =
-    tenantClusterSharding.entityRefFor(PortfolioState.typeKey, Portfolio.getEntityId(tenantId,portfolioId))
+  private def portfolioEntityRef(portfolioId:String)(implicit tenantPersistenceId: TenantPersistenceId): EntityRef[PortfolioCommand] =
+    tenantClusterSharding.entityRefFor(PortfolioState.typeKey, portfolioId)
 
-  implicit val timeout = Timeout(5.seconds)
+  implicit val timeout = Timeout(30.seconds)
 
   override def addStock(tenantId:String): ServiceCall[Stock, Stock] = ServiceCall { inStock =>
     stockEntityRef(inStock.stockId)(TenantPersistenceId(tenantId))
@@ -76,7 +76,7 @@ class HelloWorldServiceImpl(
   }
 
   override def createPortfolio(tenantId:String,portfolioId:String): ServiceCall[Seq[Holding], Portfolio] = ServiceCall { input =>
-    portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+    portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
       .ask(reply => AddPortfolio(Portfolio(tenantId,portfolioId,input), reply))
       .map { confirmation =>
         portfolioConfirmationToResult(Portfolio.getEntityId(tenantId,portfolioId), confirmation)
@@ -84,11 +84,11 @@ class HelloWorldServiceImpl(
   }
 
   override def updatePortfolio(tenantId:String,portfolioId:String): ServiceCall[Seq[Holding], Portfolio] = ServiceCall { input =>
-    portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+    portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
       .ask(reply => GetPortfolio(reply))
       .map(spo => portfolioSummaryToResult(tenantId, spo))
       .flatMap{ currentStock =>
-        portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+        portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
           .ask(reply => UpdatePortfolio(currentStock.copy(holdings = input), reply))
           .map { confirmation =>
             portfolioConfirmationToResult(Portfolio.getEntityId(tenantId,portfolioId), confirmation)
@@ -97,7 +97,7 @@ class HelloWorldServiceImpl(
   }
 
   override def addStockToPortfolio(tenantId:String,portfolioId:String): ServiceCall[Holding, Portfolio] = ServiceCall { input =>
-    portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+    portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
       .ask(reply => GetPortfolio(reply))
       .map(spo => portfolioSummaryToResult(Portfolio.getEntityId(tenantId,portfolioId), spo))
       .flatMap{ currentPortfolio =>
@@ -105,7 +105,7 @@ class HelloWorldServiceImpl(
         val currentHoldings = currentPortfolio.holdings
         val newHoldings = currentHoldings.filter(e => e.stockId!=input.stockId):+ input
         val newPortfolio = currentPortfolio.copy(holdings = newHoldings)
-        portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+        portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
           .ask(reply => UpdatePortfolio(newPortfolio, reply))
           .map { confirmation =>
             portfolioConfirmationToResult(Portfolio.getEntityId(tenantId,portfolioId), confirmation)
@@ -114,12 +114,12 @@ class HelloWorldServiceImpl(
   }
 
   override def removeStockFromPortfolio(tenantId:String,portfolioId:String): ServiceCall[Holding, Portfolio] = ServiceCall { input =>
-    portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+    portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
       .ask(reply => GetPortfolio(reply))
       .map(spo => portfolioSummaryToResult(Portfolio.getEntityId(tenantId,portfolioId), spo))
       .flatMap{ currentPortfolio =>
         val newPortfolio = currentPortfolio.copy(holdings = currentPortfolio.holdings.filter(e => e!=input) )
-        portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+        portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
           .ask(reply => UpdatePortfolio(newPortfolio, reply))
           .map { confirmation =>
             portfolioConfirmationToResult(Portfolio.getEntityId(tenantId,portfolioId), confirmation)
@@ -128,7 +128,7 @@ class HelloWorldServiceImpl(
   }
 
   override def getPortfolio(tenantId:String,portfolioId:String): ServiceCall[NotUsed, Portfolio] = ServiceCall { _ =>
-    portfolioEntityRef(tenantId,portfolioId)(TenantPersistenceId(tenantId))
+    portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
       .ask(reply => GetPortfolio(reply))
       .map(spo => portfolioSummaryToResult(Portfolio.getEntityId(tenantId,portfolioId), spo))
   }
