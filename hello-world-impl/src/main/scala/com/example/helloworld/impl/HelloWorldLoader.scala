@@ -40,20 +40,6 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   lazy val stockDao: StockDao = wire[StockDao]
 
-  println()
-  println()
-  tenantPlugins.map { t=>
-    println(s"${t.tenantPersistenceId.tenantId} ${t.journalPlugin.config.toString}")
-    println()
-    println(s"${t.tenantPersistenceId.tenantId} ${t.snapshotPlugin.config.toString}")
-    println()
-    println(s"${t.tenantPersistenceId.tenantId} ${t.queryJournalPlugin.config.toString}")
-    println()
-  }
-  println()
-  println()
-  println()
-
 
   //readSide.register(wire[StockEventProcessor])
   //readSide.register(wire[PortfolioEventProcessor])
