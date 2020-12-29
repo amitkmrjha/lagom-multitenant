@@ -5,8 +5,8 @@ import akka.cluster.sharding.typed.scaladsl.{EntityContext, EntityTypeKey}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.Effect.reply
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplyEffect}
-import com.example.domain.{Holding, Portfolio, Stock}
-import com.example.helloworld.impl.tenant.{TenantEntityBehaviour, TenantPersistenceId, TenantPersistencePlugin}
+import com.example.domain.{Portfolio}
+import com.example.helloworld.impl.tenant.{ TenantPersistencePlugin}
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, AkkaTaggerAdapter}
 import play.api.libs.json.{Format, JsResult, JsValue, Json}
 
@@ -207,8 +207,9 @@ object PortfolioBehavior {
   def create(entityContext: EntityContext[PortfolioCommand],tenantPlugin:TenantPersistencePlugin): Behavior[PortfolioCommand] = {
     import com.example.helloworld.impl.tenant.TenantClusterSharding._
 
-      val p: EntityTypeKey[PortfolioCommand] = tenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
-      val persistenceId: PersistenceId = PersistenceId(p.name, entityContext.entityId)
+    val p: EntityTypeKey[PortfolioCommand] = toTenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
+
+    val persistenceId: PersistenceId = PersistenceId(p.name, entityContext.entityId)
       create(persistenceId)
         .withTagger(
           // Using Akka Persistence Typed in Lagom requires tagging your events

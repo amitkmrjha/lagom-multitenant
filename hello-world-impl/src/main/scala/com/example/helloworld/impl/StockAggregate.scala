@@ -6,7 +6,7 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.Effect.reply
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, ReplyEffect}
 import com.example.domain.Stock
-import com.example.helloworld.impl.tenant.{TenantEntityBehaviour, TenantPersistencePlugin}
+import com.example.helloworld.impl.tenant.{TenantPersistencePlugin}
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, AkkaTaggerAdapter}
 import play.api.libs.json.{Format, JsResult, JsValue, Json}
 
@@ -21,7 +21,11 @@ object StockBehavior {
 
     import com.example.helloworld.impl.tenant.TenantClusterSharding._
 
-      val p = tenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
+      val p = toTenantTypeKey(entityContext.entityTypeKey)(tenantPlugin.tenantPersistenceId)
+    println()
+    println(s"Stock Behavior Create ${p.name}")
+    println()
+
       val persistenceId: PersistenceId = PersistenceId(p.name, entityContext.entityId)
 
      create(persistenceId)

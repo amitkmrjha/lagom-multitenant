@@ -1,7 +1,7 @@
 package com.example.helloworld.impl
 
 import akka.cluster.sharding.typed.ShardingEnvelope
-import akka.cluster.sharding.typed.scaladsl.Entity
+import akka.cluster.sharding.typed.scaladsl.{Entity, EntityTypeKey}
 import com.lightbend.lagom.scaladsl.api.ServiceLocator
 import com.lightbend.lagom.scaladsl.api.ServiceLocator.NoServiceLocator
 import com.lightbend.lagom.scaladsl.persistence.cassandra.CassandraPersistenceComponents
@@ -40,27 +40,29 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   lazy val stockDao: StockDao = wire[StockDao]
 
+  println()
+  println()
+  tenantPlugins.map { t=>
+    println(s"${t.tenantPersistenceId.tenantId} ${t.journalPlugin.config.toString}")
+    println()
+    println(s"${t.tenantPersistenceId.tenantId} ${t.snapshotPlugin.config.toString}")
+    println()
+    println(s"${t.tenantPersistenceId.tenantId} ${t.queryJournalPlugin.config.toString}")
+    println()
+  }
+  println()
+  println()
+  println()
+
+
   //readSide.register(wire[StockEventProcessor])
   //readSide.register(wire[PortfolioEventProcessor])
 
   // Initialize the sharding of the Aggregate. The following starts the aggregate Behavior under
   // a given sharding entity typeKey.
-  tenantClusterSharding.init(
-    tenantPlugins.map{ t =>
-      Entity(PortfolioState.typeKey)(
-        entityContext => PortfolioBehavior.create(entityContext,t)
-      )
-    }.toSeq
 
-
-  )
-  tenantClusterSharding.init(
-    tenantPlugins.map { t =>
-      Entity(StockState.typeKey)(
-        entityContext =>StockBehavior.create(entityContext,t)
-      )
-    }.toSeq
-  )
+  tenantClusterSharding.initPortfolio(tenantPlugins)
+  tenantClusterSharding.initStock(tenantPlugins)
   /*
   clusterSharding.init(
     Entity(StockState.typeKey)(
