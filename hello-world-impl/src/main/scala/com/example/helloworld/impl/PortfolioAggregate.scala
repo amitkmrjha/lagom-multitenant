@@ -205,7 +205,6 @@ object PortfolioBehavior {
     * Given a sharding [[EntityContext]] this function produces an Akka [[Behavior]] for the aggregate.
     */
   def create(entityContext: EntityContext[PortfolioCommand],tenantPlugin:TenantPersistencePlugin): Behavior[PortfolioCommand] = {
-
     val persistenceId: PersistenceId = PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
       create(persistenceId)
         .withTagger(
