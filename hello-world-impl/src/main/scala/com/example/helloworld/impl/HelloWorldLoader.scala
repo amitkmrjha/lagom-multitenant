@@ -10,6 +10,7 @@ import com.lightbend.lagom.scaladsl.devmode.LagomDevModeComponents
 import play.api.libs.ws.ahc.AhcWSComponents
 import com.example.helloworld.api.HelloWorldService
 import com.example.helloworld.impl.daos.stock.StockDao
+import com.example.helloworld.impl.entity.{PortfolioEntity, StockEntity}
 import com.example.helloworld.impl.tenant.{TenantPersistenceComponent, TenantPersistencePlugin}
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
@@ -29,6 +30,7 @@ class HelloWorldLoader extends LagomApplicationLoader {
 
 abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
+    /*with CassandraPersistenceComponents*/
     with TenantPersistenceComponent
     with AhcWSComponents {
 
@@ -40,26 +42,6 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   lazy val stockDao: StockDao = wire[StockDao]
 
-
-  //readSide.register(wire[StockEventProcessor])
-  //readSide.register(wire[PortfolioEventProcessor])
-
-  // Initialize the sharding of the Aggregate. The following starts the aggregate Behavior under
-  // a given sharding entity typeKey.
-
-  tenantClusterSharding.initPortfolio(tenantPlugins)
-  tenantClusterSharding.initStock(tenantPlugins)
-  /*
-  clusterSharding.init(
-    Entity(StockState.typeKey)(
-      entityContext => StockBehavior.create(entityContext)
-    )
-  )
-
-  clusterSharding.init(
-    Entity(PortfolioState.typeKey)(
-      entityContext => PortfolioBehavior.create(entityContext)
-    )
-  )*/
-
+  tenantPersistentEntityRegistry.register(wire[PortfolioEntity])
+  tenantPersistentEntityRegistry.register(wire[StockEntity])
 }

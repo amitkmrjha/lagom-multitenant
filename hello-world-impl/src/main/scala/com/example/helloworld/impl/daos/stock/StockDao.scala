@@ -22,9 +22,9 @@ class StockDao (session: CassandraSession)
   }
 
   protected def convert(r: Row): Stock = {
-    Stock(stockId(r),name(r),price(r))
+    Stock(tenantId(r),stockId(r),name(r),price(r))
   }
-
+  private def tenantId(r: Row): Option[String] =  Option(r.getString(Columns.TenantId))
   private def stockId(r: Row): String =  r.getString(Columns.StockId)
   private def name(r: Row): String =  r.getString(Columns.Name)
   private def price(r: Row): Double =  r.getDouble(Columns.Price)

@@ -1,5 +1,7 @@
 package com.example.helloworld.impl
 
+import com.example.domain.{Portfolio, Stock}
+import com.example.helloworld.impl.entity.{PortfolioArchived, PortfolioCreated, PortfolioUpdated, StockArchived, StockCreated, StockUpdated}
 import com.lightbend.lagom.scaladsl.playjson.{JsonSerializer, JsonSerializerRegistry}
 
 /**
@@ -14,25 +16,14 @@ import com.lightbend.lagom.scaladsl.playjson.{JsonSerializer, JsonSerializerRegi
 object HelloWorldSerializerRegistry extends JsonSerializerRegistry {
   override def serializers: Seq[JsonSerializer[_]] = Seq(
     // state and events can use play-json, but commands should use jackson because of ActorRef[T] (see application.conf)
-    JsonSerializer[StockAdded],
+    JsonSerializer[StockCreated],
     JsonSerializer[StockUpdated],
     JsonSerializer[StockArchived],
-    JsonSerializer[StockState],
+    JsonSerializer[Stock],
     // the replies use play-json as well
-    JsonSerializer[StockSummary],
-    JsonSerializer[StockConfirmation],
-    JsonSerializer[StockAccepted],
-    JsonSerializer[StockRejected],
-
-
-    JsonSerializer[PortfolioAdded],
+    JsonSerializer[Portfolio],
+    JsonSerializer[PortfolioCreated],
     JsonSerializer[PortfolioUpdated],
-    JsonSerializer[PortfolioArchived],
-    JsonSerializer[PortfolioState],
-    // the replies use play-json as well
-    JsonSerializer[PortfolioSummary],
-    JsonSerializer[PortfolioConfirmation],
-    JsonSerializer[PortfolioAccepted],
-    JsonSerializer[PortfolioRejected]
+    JsonSerializer[PortfolioArchived]
   )
 }

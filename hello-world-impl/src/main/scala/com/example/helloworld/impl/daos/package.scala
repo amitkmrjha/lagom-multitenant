@@ -9,6 +9,7 @@ package object daos {
 
   object Columns {
     val StockId: String = "stock_id"
+    val TenantId: String = "tenant_id"
     val Name: String = "name"
     val Price: String = "price"
 
