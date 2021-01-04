@@ -12,7 +12,7 @@ import com.example.helloworld.api.HelloWorldService
 import com.example.helloworld.impl.daos.stock.StockDao
 import com.example.helloworld.impl.entity.{PortfolioEntity, StockEntity}
 import com.example.helloworld.impl.projection.HelloWorldProjection
-import com.example.helloworld.impl.tenant.{TenantPersistenceComponent, TenantPersistencePlugin, TenantPersistentEntityRegistry, TenantProjectionComponent}
+import com.example.helloworld.impl.tenant.{TenantCassandraSession, TenantPersistencePlugin, TenantProjectionComponent}
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
 import akka.actor.typed.scaladsl.adapter._
@@ -35,6 +35,7 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
     with CassandraPersistenceComponents
     with LagomKafkaComponents
+    with TenantProjectionComponent
     with AhcWSComponents {
 
   // Bind the service that this server provides

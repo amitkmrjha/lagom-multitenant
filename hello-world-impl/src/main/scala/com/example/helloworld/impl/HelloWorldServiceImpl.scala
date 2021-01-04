@@ -12,7 +12,7 @@ import akka.util.Timeout
 import com.example.domain.{Holding, Portfolio, Stock}
 import com.example.helloworld.impl.daos.stock.StockDao
 import com.example.helloworld.impl.entity.{CreatePortfolio, CreateStock, GetPortfolio, GetStock, PortfolioArchived, PortfolioCommand, PortfolioCreated, PortfolioEntity, PortfolioUpdated, StockArchived, StockCommand, StockCreated, StockEntity, StockUpdated, UpdatePortfolio, UpdateStock}
-import com.example.helloworld.impl.tenant.{TenantPersistenceId, TenantPersistentEntityRegistry}
+import com.example.helloworld.impl.tenant.TenantPersistenceId
 import com.lightbend.lagom.scaladsl.api.transport.BadRequest
 import play.api.Logger
 import com.example.helloworld.impl.utils.FutureConverter.FutureOptionOps

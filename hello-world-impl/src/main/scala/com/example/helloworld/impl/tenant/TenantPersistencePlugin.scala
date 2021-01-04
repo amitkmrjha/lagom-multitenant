@@ -6,18 +6,24 @@ import com.typesafe.config.{Config, ConfigObject, ConfigValue}
 
 import scala.collection.JavaConverters._
 
-case class TenantPersistencePlugin(tenantPersistenceId:TenantPersistenceId,journalPlugin: TenantJournalPlugin,snapshotPlugin:TenantSnapShotPlugin, queryJournalPlugin: TenantQueryJournalPlugin)
+case class TenantPersistencePlugin(tenantPersistenceId:TenantPersistenceId,
+                                   journalPlugin: TenantJournalPlugin,
+                                   snapshotPlugin:TenantSnapShotPlugin,
+                                   queryJournalPlugin: TenantQueryJournalPlugin,
+                                   projectionPlugin:TenantProjectionPlugin)
 object TenantPersistencePlugin {
   def toTenantPersistencePlugin(system: ActorSystem): Seq[TenantPersistencePlugin] = {
     val journalPlugin = TenantJournalPlugin.toTenantJournalPlugin(system)
     val snapshotPlugin = TenantSnapShotPlugin.toTenantSnapShotPlugin(system)
     val queryJournalPlugin = TenantQueryJournalPlugin.toTenantQueryJournalPlugin(system)
+    val  projectionPlugin = TenantProjectionPlugin.toTenantProjectionPlugin(system)
     journalPlugin.map{e =>
       TenantPersistencePlugin(
         e.tenantPersistenceId,
         e,
         snapshotPlugin.find(_.tenantPersistenceId == e.tenantPersistenceId).getOrElse(TenantSnapShotPlugin.toDefault(e.tenantPersistenceId,system)),
-        queryJournalPlugin.find(_.tenantPersistenceId == e.tenantPersistenceId).getOrElse(TenantQueryJournalPlugin.toDefault(e.tenantPersistenceId,system))
+        queryJournalPlugin.find(_.tenantPersistenceId == e.tenantPersistenceId).getOrElse(TenantQueryJournalPlugin.toDefault(e.tenantPersistenceId,system)),
+        projectionPlugin.find(_.tenantPersistenceId == e.tenantPersistenceId).getOrElse(TenantProjectionPlugin.toDefault(e.tenantPersistenceId,system))
       )
     }
   }
@@ -56,7 +62,7 @@ object TenantSnapShotPlugin{
   def toDefault(tenantPersistenceId:TenantPersistenceId,system: ActorSystem) : TenantSnapShotPlugin = {
     TenantSnapShotPlugin(tenantPersistenceId ,
       system.settings.config.getConfig(
-        "cassandra-query-journal"
+        "cassandra-snapshot-store"
       ))
   }
 }
@@ -80,6 +86,27 @@ object TenantQueryJournalPlugin{
       ))
   }
 }
+
+case class TenantProjectionPlugin(tenantPersistenceId:TenantPersistenceId,config:Config)
+object TenantProjectionPlugin{
+  def toTenantProjectionPlugin(system: ActorSystem): Seq[TenantProjectionPlugin] = {
+    system.settings.config.getConfig("tenant.akka-projection-cassandra-plugin").root().asScala.map{
+      case (k:String,v:ConfigValue) =>
+        TenantProjectionPlugin(TenantPersistenceId(k) , v.asInstanceOf[ConfigObject].toConfig.withFallback(
+          system.settings.config.getConfig(
+            "akka.projection.cassandra"
+          )
+        ))
+    }.toSeq
+  }
+  def toDefault(tenantPersistenceId:TenantPersistenceId,system: ActorSystem) : TenantProjectionPlugin  = {
+    TenantProjectionPlugin(tenantPersistenceId ,
+      system.settings.config.getConfig(
+        "akka.projection.cassandra"
+      ))
+  }
+}
+
 
 
 case class TenantPersistenceId(tenantId:String)
