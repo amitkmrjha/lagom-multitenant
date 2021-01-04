@@ -1,5 +1,5 @@
 package com.example.helloworld.impl.projection
-/*
+
 import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.ShardedDaemonProcessSettings
 import akka.cluster.sharding.typed.scaladsl.ShardedDaemonProcess
@@ -12,17 +12,29 @@ import akka.projection.eventsourced.EventEnvelope
 import akka.projection.eventsourced.scaladsl.EventSourcedProvider
 import akka.projection.scaladsl.AtLeastOnceProjection
 import akka.projection.scaladsl.SourceProvider
-import com.example.helloworld.impl.{PortfolioEvent, PortfolioState}*/
+import com.example.helloworld.impl.HelloWorldEvent
 
 object HelloWorldProjection {
-  /*def init(
+  def init(
             system: ActorSystem[_]
             /*repository: ItemPopularityRepository*/): Unit = {
+    println()
+    println(s"HelloWorld Projection alpakka.cassandra System config ")
+    println(s"${system.settings.config.getConfig("alpakka.cassandra")}")
+    println()
+
+    println()
+    println(s"HelloWorld Projection akka.projection.cassandra System config ")
+    println(s"${system.settings.config.getConfig("akka.projection.cassandra")}")
+    println()
+
+
+
     ShardedDaemonProcess(system).init(
-      name = "ItemPopularityProjection",
-      /*PortfolioEvent.Tag.size,*/1,
+      name = "HelloWorldProjection",
+      HelloWorldEvent.Tag.allTags.size,
       index =>
-        ProjectionBehavior(createProjectionFor(system, repository, index)),
+        ProjectionBehavior(createProjectionFor(system,index)),
       ShardedDaemonProcessSettings(system),
       Some(ProjectionBehavior.Stop))
   }
@@ -32,22 +44,24 @@ object HelloWorldProjection {
                                    system: ActorSystem[_],
                                    /*repository: ItemPopularityRepository,*/
                                    index: Int)
-  : AtLeastOnceProjection[Offset, EventEnvelope[PortfolioEvent]] = {
-    /*val tag = ShoppingCart.tags(index)*/
+  : AtLeastOnceProjection[Offset, EventEnvelope[HelloWorldEvent]] = {
+
+    val tag = HelloWorldEvent.Tag.allTags.toSeq(index).tag
 
     val sourceProvider
-    : SourceProvider[Offset, EventEnvelope[PortfolioEvent]] =
-      EventSourcedProvider.eventsByTag[ShoppingCart.Event](
+    : SourceProvider[Offset, EventEnvelope[HelloWorldEvent]] =
+      EventSourcedProvider.eventsByTag[HelloWorldEvent](
         system = system,
-        readJournalPluginId = CassandraReadJournal.Identifier,
+        /*readJournalPluginId = CassandraReadJournal.Identifier,*/
+        readJournalPluginId = "tenant.cassandra-query-journal-plugin.t1",
         tag = tag)
 
     CassandraProjection.atLeastOnce(
-      projectionId = ProjectionId("ItemPopularityProjection", tag),
+      projectionId = ProjectionId("HelloWorldProjection", tag),
       sourceProvider,
       handler = () =>
-        new ItemPopularityProjectionHandler(tag, system, repository)
+        new HelloWorldProjectionHandler(tag, system)
     )
-  }*/
+  }
 
 }

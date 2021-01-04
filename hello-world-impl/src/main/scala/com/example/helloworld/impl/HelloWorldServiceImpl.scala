@@ -20,8 +20,7 @@ import com.example.helloworld.impl.utils.FutureConverter.FutureOptionOps
   * Implementation of the HelloWorldService.
   */
 class HelloWorldServiceImpl(
-                             tenantPersistentEntityRegistry: TenantPersistentEntityRegistry,
-                             stockDao:StockDao
+                             tenantPersistentEntityRegistry: TenantPersistentEntityRegistry
 )(implicit ec: ExecutionContext)
   extends HelloWorldService {
 

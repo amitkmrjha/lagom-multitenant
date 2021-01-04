@@ -11,9 +11,11 @@ import play.api.libs.ws.ahc.AhcWSComponents
 import com.example.helloworld.api.HelloWorldService
 import com.example.helloworld.impl.daos.stock.StockDao
 import com.example.helloworld.impl.entity.{PortfolioEntity, StockEntity}
-import com.example.helloworld.impl.tenant.{TenantPersistenceComponent, TenantPersistencePlugin}
+import com.example.helloworld.impl.projection.HelloWorldProjection
+import com.example.helloworld.impl.tenant.{TenantPersistenceComponent, TenantPersistencePlugin, TenantPersistentEntityRegistry, TenantProjectionComponent}
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
+import akka.actor.typed.scaladsl.adapter._
 
 class HelloWorldLoader extends LagomApplicationLoader {
 
@@ -32,6 +34,7 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
     /*with CassandraPersistenceComponents*/
     with TenantPersistenceComponent
+    with TenantProjectionComponent
     with AhcWSComponents {
 
   // Bind the service that this server provides
@@ -40,7 +43,9 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
   // Register the JSON serializer registry
   override lazy val jsonSerializerRegistry: JsonSerializerRegistry = HelloWorldSerializerRegistry
 
-  lazy val stockDao: StockDao = wire[StockDao]
+  //lazy val stockDao: StockDao = wire[StockDao]
+
+  HelloWorldProjection.init(actorSystem.toTyped)
 
   tenantPersistentEntityRegistry.register(wire[PortfolioEntity])
   tenantPersistentEntityRegistry.register(wire[StockEntity])
