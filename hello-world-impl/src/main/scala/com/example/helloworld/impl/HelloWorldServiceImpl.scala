@@ -11,16 +11,18 @@ import scala.concurrent.duration._
 import akka.util.Timeout
 import com.example.domain.{Holding, Portfolio, Stock}
 import com.example.helloworld.impl.daos.stock.StockDao
-import com.example.helloworld.impl.entity.{CreatePortfolio, CreateStock, GetPortfolio, GetStock, PortfolioCommand, PortfolioEntity, StockCommand, StockEntity, UpdatePortfolio, UpdateStock}
+import com.example.helloworld.impl.entity.{CreatePortfolio, CreateStock, GetPortfolio, GetStock, PortfolioArchived, PortfolioCommand, PortfolioCreated, PortfolioEntity, PortfolioUpdated, StockArchived, StockCommand, StockCreated, StockEntity, StockUpdated, UpdatePortfolio, UpdateStock}
 import com.example.helloworld.impl.tenant.{TenantPersistenceId, TenantPersistentEntityRegistry}
 import com.lightbend.lagom.scaladsl.api.transport.BadRequest
 import play.api.Logger
 import com.example.helloworld.impl.utils.FutureConverter.FutureOptionOps
+import com.lightbend.lagom.scaladsl.api.broker.Topic
+import com.lightbend.lagom.scaladsl.broker.TopicProducer
 /**
   * Implementation of the HelloWorldService.
   */
 class HelloWorldServiceImpl(
-                             tenantPersistentEntityRegistry: TenantPersistentEntityRegistry
+                             persistentEntityRegistry: PersistentEntityRegistry
 )(implicit ec: ExecutionContext)
   extends HelloWorldService {
 
@@ -30,10 +32,10 @@ class HelloWorldServiceImpl(
     * Looks up the entity for the given ID.
     */
   private def stockEntityRef(id: String)(implicit tenantPersistenceId: TenantPersistenceId): PersistentEntityRef[StockCommand] =
-    tenantPersistentEntityRegistry.refFor[StockEntity](id)
+    persistentEntityRegistry.refFor[StockEntity](Stock.getEntityId(tenantPersistenceId.tenantId,id))
 
   private def portfolioEntityRef(portfolioId:String)(implicit tenantPersistenceId: TenantPersistenceId): PersistentEntityRef[PortfolioCommand] =
-    tenantPersistentEntityRegistry.refFor[PortfolioEntity](portfolioId)
+    persistentEntityRegistry.refFor[PortfolioEntity](Portfolio.getEntityId(tenantPersistenceId.tenantId,portfolioId))
 
   implicit val timeout = Timeout(30.seconds)
 
@@ -134,5 +136,40 @@ class HelloWorldServiceImpl(
   }
 
   override def getInvestment(tenantId:String,portfolioId:String): ServiceCall[NotUsed, Double] = ???
+
+  override def helloWorldTopic(): Topic[api.HelloWorldEvent] =
+    TopicProducer.taggedStreamWithOffset(HelloWorldEvent.Tag.allTags.toList)  { (tag, fromOffset) =>
+      persistentEntityRegistry
+        .eventStream(tag, fromOffset)
+        .map(ev => (convertEvent(ev), ev.offset))
+    }
+  private def convertEvent(
+                            helloWorldEvent: EventStreamElement[HelloWorldEvent]
+                          ): api.HelloWorldEvent = {
+    helloWorldEvent.event match {
+      case StockCreated(msg: Stock) =>
+        logHelloWorldEvent(s"Topic event StockCreated ${msg}")
+        api.StockCreated( msg.tenantId.getOrElse(""),msg)
+      case StockUpdated(msg: Stock) =>
+        logHelloWorldEvent(s"Topic event StockChanged ${msg}")
+        api.StockChanged( msg.tenantId.getOrElse(""),msg)
+      case StockArchived(msg: Stock) =>
+        logHelloWorldEvent(s"Topic event StockRemoved ${msg}")
+        api.StockRemoved( msg.tenantId.getOrElse(""),msg)
+      case PortfolioCreated(msg:Portfolio) =>
+        logHelloWorldEvent(s"Topic event PortfolioCreated ${msg}")
+        api.PortfolioCreated( msg.tenantId,msg)
+      case PortfolioUpdated(msg:Portfolio) =>
+        logHelloWorldEvent(s"Topic event PortfolioChanged ${msg}")
+        api.PortfolioChanged( msg.tenantId,msg)
+      case PortfolioArchived(msg:Portfolio) =>
+        logHelloWorldEvent(s"Topic event PortfolioRemoved ${msg}")
+        api.PortfolioRemoved( msg.tenantId,msg)
+    }
+  }
+
+  private def logHelloWorldEvent(msg: String): Unit = {
+    logger.info(s"Kafka offset event [ ${msg} ]")
+  }
 
 }

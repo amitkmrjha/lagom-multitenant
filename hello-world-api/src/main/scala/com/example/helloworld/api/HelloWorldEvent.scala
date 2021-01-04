@@ -1,5 +1,5 @@
 package com.example.helloworld.api
-import com.example.domain.Portfolio
+import com.example.domain.{Portfolio, Stock}
 import julienrf.json.derived
 import play.api.libs.json._
 
@@ -24,4 +24,18 @@ object PortfolioChanged {
 case class PortfolioRemoved(tenantId:String,portfolio:Portfolio) extends HelloWorldEvent
 object PortfolioRemoved {
   implicit val portfolioChangedFormat: Format[PortfolioRemoved] = Json.format
+}
+
+case class StockCreated(tenantId:String,stock:Stock) extends HelloWorldEvent
+object StockCreated {
+  implicit val stockCreatedFormat: Format[StockCreated] = Json.format
+}
+
+case class StockChanged(tenantId:String,stock:Stock) extends HelloWorldEvent
+object StockChanged {
+  implicit val stockChangedFormat: Format[StockChanged] = Json.format
+}
+case class StockRemoved(tenantId:String,stock:Stock) extends HelloWorldEvent
+object StockRemoved {
+  implicit val stockChangedFormat: Format[StockRemoved] = Json.format
 }

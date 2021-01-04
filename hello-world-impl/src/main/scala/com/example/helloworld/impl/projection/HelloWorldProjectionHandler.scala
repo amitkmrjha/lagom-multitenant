@@ -47,7 +47,7 @@ class HelloWorldProjectionHandler(
   }
 
   private def logHelloWorldEvent(msg: String): Unit = {
-      log.info(msg)
+      log.info(s"Projection offset event [ ${msg} ]")
   }
 
 }

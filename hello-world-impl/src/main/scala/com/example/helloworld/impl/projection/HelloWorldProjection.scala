@@ -18,17 +18,8 @@ object HelloWorldProjection {
   def init(
             system: ActorSystem[_]
             /*repository: ItemPopularityRepository*/): Unit = {
-    println()
-    println(s"HelloWorld Projection alpakka.cassandra System config ")
-    println(s"${system.settings.config.getConfig("alpakka.cassandra")}")
-    println()
 
-    println()
-    println(s"HelloWorld Projection akka.projection.cassandra System config ")
-    println(s"${system.settings.config.getConfig("akka.projection.cassandra")}")
-    println()
-
-
+    CassandraProjection.createOffsetTableIfNotExists()(system)
 
     ShardedDaemonProcess(system).init(
       name = "HelloWorldProjection",
@@ -52,8 +43,8 @@ object HelloWorldProjection {
     : SourceProvider[Offset, EventEnvelope[HelloWorldEvent]] =
       EventSourcedProvider.eventsByTag[HelloWorldEvent](
         system = system,
-        /*readJournalPluginId = CassandraReadJournal.Identifier,*/
-        readJournalPluginId = "tenant.cassandra-query-journal-plugin.t1",
+        readJournalPluginId = CassandraReadJournal.Identifier,
+        /*readJournalPluginId = "tenant.cassandra-query-journal-plugin.t1",*/
         tag = tag)
 
     CassandraProjection.atLeastOnce(

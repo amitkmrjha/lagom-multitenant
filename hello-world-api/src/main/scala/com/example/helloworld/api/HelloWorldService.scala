@@ -10,7 +10,7 @@ import com.lightbend.lagom.scaladsl.api.{Descriptor, Service, ServiceCall}
 import play.api.libs.json.{Format, Json}
 
 object HelloWorldService  {
-  val TOPIC_NAME = "helloworld"
+  val TOPIC_NAME = "helloWorld"
 }
 
 
@@ -38,7 +38,7 @@ trait HelloWorldService extends Service {
   /**
     * This gets published to Kafka.
     */
-  //def helloWorldTopic(): Topic[HelloWorldEvent]
+  def helloWorldTopic(): Topic[HelloWorldEvent]
 
   override final def descriptor: Descriptor = {
     import Service._
@@ -56,7 +56,7 @@ trait HelloWorldService extends Service {
         restCall(Method.PUT, "/api/v1/portfolio/:tenantId/:portfolioId/remove", removeStockFromPortfolio _),
         restCall(Method.GET, "/api/v1/portfolio/:tenantId/:portfolioId", getPortfolio _),
         restCall(Method.GET, "/api/v1/portfolio/:tenantId/:portfolioId", getInvestment _)
-      )/*
+      )
       .withTopics(
         topic(HelloWorldService.TOPIC_NAME, helloWorldTopic _)
           // Kafka partitions messages, messages within the same partition will
@@ -68,7 +68,7 @@ trait HelloWorldService extends Service {
             KafkaProperties.partitionKeyStrategy,
             PartitionKeyStrategy[HelloWorldEvent](_.tenantId)
           )
-      )*/
+      )
       .withAutoAcl(true)
     // @formatter:on
   }

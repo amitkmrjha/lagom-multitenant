@@ -1,12 +1,16 @@
 package com.example.helloworld.impl
 
-import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventShards, AggregateEventTag, AggregateEventTagger}
+import com.lightbend.lagom.scaladsl.persistence.AggregateEvent
+import com.lightbend.lagom.scaladsl.persistence.AggregateEventShards
+import com.lightbend.lagom.scaladsl.persistence.AggregateEventTag
+
 
 trait HelloWorldEvent extends AggregateEvent[HelloWorldEvent] {
-  override def aggregateTag: AggregateEventTagger[HelloWorldEvent] = HelloWorldEvent.Tag
+  override def aggregateTag: AggregateEventShards[HelloWorldEvent] = HelloWorldEvent.Tag
+
 }
 
 object HelloWorldEvent {
   val NumShards = 4
-  val Tag: AggregateEventShards[HelloWorldEvent] = AggregateEventTag.sharded[HelloWorldEvent](NumShards)
+  val Tag = AggregateEventTag.sharded[HelloWorldEvent](NumShards)
 }

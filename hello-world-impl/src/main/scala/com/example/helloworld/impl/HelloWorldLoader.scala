@@ -16,6 +16,7 @@ import com.example.helloworld.impl.tenant.{TenantPersistenceComponent, TenantPer
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
 import akka.actor.typed.scaladsl.adapter._
+import com.lightbend.lagom.scaladsl.broker.kafka.LagomKafkaComponents
 
 class HelloWorldLoader extends LagomApplicationLoader {
 
@@ -32,9 +33,8 @@ class HelloWorldLoader extends LagomApplicationLoader {
 
 abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
-    /*with CassandraPersistenceComponents*/
-    with TenantPersistenceComponent
-    with TenantProjectionComponent
+    with CassandraPersistenceComponents
+    with LagomKafkaComponents
     with AhcWSComponents {
 
   // Bind the service that this server provides
@@ -47,6 +47,7 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   HelloWorldProjection.init(actorSystem.toTyped)
 
-  tenantPersistentEntityRegistry.register(wire[PortfolioEntity])
-  tenantPersistentEntityRegistry.register(wire[StockEntity])
+  persistentEntityRegistry.register(wire[PortfolioEntity])
+  persistentEntityRegistry.register(wire[StockEntity])
+
 }
