@@ -25,7 +25,7 @@ trait StockReadSideTable[T <: Stock] {
 
   protected def primaryKey: String
 
-  def tableScript: String
+  protected def tableScript(keySpace:String): String
 
   protected def fields: Seq[String]
 
@@ -47,9 +47,11 @@ trait StockReadSideTable[T <: Stock] {
 
   def createTable()
                  (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
-    for {
-      _ <- sessionExecuteCreateTable(tableScript)
-    } yield Done
+    session.getTenantKeyspace.foldLeft(Future.successful(Seq.empty[Done])) {
+      case (acc, k) => acc.flatMap{bs =>
+        sessionExecuteCreateTable(tableScript(k)).map(b => bs :+ b)
+      }
+    }.map(_ => Done)
   }
 
   protected def sessionExecuteCreateTable(tableScript: String)
@@ -114,9 +116,9 @@ trait StockReadSideTable[T <: Stock] {
 }
 
 object StockByTenantIdTable extends StockReadSideTable[Stock] {
-  override def tableScript: String =
+  override protected def tableScript(keySpace:String): String =
     s"""
-        CREATE TABLE IF NOT EXISTS $tableName (
+        CREATE TABLE IF NOT EXISTS $keySpace.$tableName (
           ${Columns.StockEntityID} text,
           ${Columns.Name} text,
           ${Columns.Price} double,

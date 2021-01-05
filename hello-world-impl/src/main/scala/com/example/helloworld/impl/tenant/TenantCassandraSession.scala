@@ -25,6 +25,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
        case None => throw new Exception(s"No akka projection config found for tenant id ${tenantId.tenantId}")
      }
    }
+
     //create Key space - we need to find a better way for this
     tenantPlugins.foldLeft(Future.successful(Seq.empty[Done])) {
        case (acc, p) =>
@@ -60,7 +61,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
      tenantPlugins.foldLeft(Future.successful(Seq.empty[Done])) {
        case (acc, p) => acc.flatMap{bs =>
          val keyspace: String = p.sessionPlugin.config.getString("read-side-keyspace")
-         delegate(p.tenantPersistenceId).executeCreateTable(stmt) .map(b => bs :+ b)
+         delegate(p.tenantPersistenceId).executeDDL(stmt) .map(b => bs :+ b)
        }
      }.map(_ => Done)
    }
@@ -110,5 +111,9 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
    def selectOne(stmt: String, bindValues: AnyRef*)(implicit  tenantPersistenceId:TenantPersistenceId): Future[Option[Row]] = {
      delegate.selectOne(stmt,bindValues)
+   }
+
+   def getTenantKeyspace:Seq[String] = {
+     tenantPlugins.map(p => p.sessionPlugin.config.getString("read-side-keyspace"))
    }
 }
