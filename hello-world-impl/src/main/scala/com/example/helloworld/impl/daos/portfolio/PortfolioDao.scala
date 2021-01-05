@@ -1,6 +1,7 @@
 package com.example.helloworld.impl.daos.portfolio
 
 import akka.Done
+import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.oss.driver.api.core.cql.Row
 import com.example.domain.{Holding, Portfolio}
 import com.example.helloworld.impl.daos.Columns
@@ -17,24 +18,12 @@ class PortfolioDao (session: TenantCassandraSession)
 
   private val logger = Logger(this.getClass)
 
-  def insert(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    PortfolioByTenantIdTable.insert(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
-  }
+  def insert(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = ???
 
-  def delete(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    PortfolioByTenantIdTable.delete(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
-  }
+  def delete(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = ???
 
-  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Portfolio]] =
-    sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString)
+  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Portfolio]] = ???
+
 
   protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Portfolio]] = {
     session.selectAll(queryString).map(_.map(r => convert(r)))

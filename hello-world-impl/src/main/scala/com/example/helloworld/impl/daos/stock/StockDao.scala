@@ -1,11 +1,9 @@
 package com.example.helloworld.impl.daos.stock
 
 import akka.Done
-import com.datastax.driver.core.querybuilder.QueryBuilder
-import com.datastax.oss.driver.api.core.cql.{BatchStatement, Row}
+import com.datastax.oss.driver.api.core.cql.{Row}
 import com.example.domain.Stock
 import com.example.helloworld.impl.daos.Columns
-import com.example.helloworld.impl.daos.stock.StockByTenantIdTable.{cL, tableName, vL}
 import com.example.helloworld.impl.tenant.{TenantCassandraSession, TenantPersistenceId}
 import play.api.Logger
 
@@ -15,23 +13,11 @@ class StockDao (session: TenantCassandraSession)
 
   private val logger = Logger(this.getClass)
 
-  def insert(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    StockByTenantIdTable.insert(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
-  }
+  def insert(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = ???
 
-  def delete(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    StockByTenantIdTable.delete(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
-  }
+  def delete(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = ???
 
-  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Stock]] = sessionSelectAll(StockByTenantIdTable.getAllQueryString)
+  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Stock]] = ???
 
    protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Stock]] = {
     session.selectAll(queryString).map(_.map(convert))
