@@ -13,11 +13,27 @@ class StockDao (session: TenantCassandraSession)
 
   private val logger = Logger(this.getClass)
 
-  def insert(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = ???
+  def createReadTable():Future[Done] = {
+    StockByTenantIdTable.createTable()(session,ec)
+  }
 
-  def delete(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = ???
+  def insert(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
+    StockByTenantIdTable.insert(stock)(session,ec).flatMap{_ match {
+      case Some(b)=>
+        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
+      case None => Future.successful(Done)
+    }}
+  }
 
-  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Stock]] = ???
+  def delete(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
+    StockByTenantIdTable.delete(stock)(session,ec).flatMap{_ match {
+      case Some(b)=>
+        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
+      case None => Future.successful(Done)
+    }}
+  }
+
+  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Stock]] = sessionSelectAll(StockByTenantIdTable.getAllQueryString)
 
    protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Stock]] = {
     session.selectAll(queryString).map(_.map(convert))

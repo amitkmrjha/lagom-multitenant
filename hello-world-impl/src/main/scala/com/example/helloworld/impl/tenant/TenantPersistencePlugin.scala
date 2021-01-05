@@ -8,7 +8,7 @@ import com.typesafe.config.{Config, ConfigObject, ConfigValue}
 import scala.collection.JavaConverters._
 
 case class TenantPersistencePlugin(tenantPersistenceId:TenantPersistenceId,
-                                   projectionPlugin:TenantSessionPlugin)
+                                   sessionPlugin:TenantSessionPlugin)
 object TenantPersistencePlugin {
   def toTenantPersistencePlugin(system: ActorSystem): Seq[TenantPersistencePlugin] = {
     val  projectionPlugin = TenantSessionPlugin.toTenantProjectionPlugin(system)
