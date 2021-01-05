@@ -1,12 +1,11 @@
 package com.example.helloworld.impl.daos.portfolio
 
 import akka.Done
-import com.datastax.driver.core.{BoundStatement, PreparedStatement}
-import com.datastax.driver.core.querybuilder.{Delete, Insert, QueryBuilder, Update}
-import com.example.domain.{Holding, Portfolio}
+import com.datastax.driver.core.querybuilder.{Delete, Insert, QueryBuilder}
+import com.datastax.oss.driver.api.core.cql.PreparedStatement
+import com.example.domain.Portfolio
 import com.example.helloworld.impl.daos.{ColumnFamilies, Columns}
-import com.example.helloworld.impl.daos.stock.ReadSideTable
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{ CassandraSession}
+import com.example.helloworld.impl.tenant.{TenantBoundStatement, TenantCassandraSession, TenantPersistenceId}
 import play.api.Logger
 import play.api.libs.json.Json
 
@@ -14,13 +13,13 @@ import java.util
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.collection.JavaConverters._
 
-trait TenantReadSideTable[T <: Portfolio] {
+trait PortfolioReadSideTable[T <: Portfolio] {
 
   private val logger = Logger(this.getClass)
 
-  protected val insertPromise: Promise[PreparedStatement] = Promise[PreparedStatement]
+  protected val insertPromiseTenant: Promise[Map[TenantPersistenceId,PreparedStatement]] = Promise[Map[TenantPersistenceId,PreparedStatement]]
 
-  protected val deletePromise: Promise[PreparedStatement] = Promise[PreparedStatement]
+  protected val deletePromiseTenant: Promise[Map[TenantPersistenceId,PreparedStatement]] = Promise[Map[TenantPersistenceId,PreparedStatement]]
 
   protected def tableName: String
 
@@ -47,14 +46,14 @@ trait TenantReadSideTable[T <: Portfolio] {
   protected def getCountQueryString: String
 
   def createTable()
-                 (implicit session: CassandraSession, ec: ExecutionContext): Future[Done] = {
+                 (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     for {
       _ <- sessionExecuteCreateTable(tableScript)
     } yield Done
   }
 
   protected def sessionExecuteCreateTable(tableScript: String)
-                                         (implicit session: CassandraSession, ec: ExecutionContext): Future[Done] = {
+                                         (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     session.executeCreateTable(tableScript).recover {
       case ex: Exception =>
         logger.error(s"Store MS CreateTable $tableScript execute error => ${ex.getMessage}", ex)
@@ -62,20 +61,20 @@ trait TenantReadSideTable[T <: Portfolio] {
     }
   }
 
-  def prepareStatement()
-                      (implicit session: CassandraSession, ec: ExecutionContext): Future[Done] = {
-    val insertRepositoryFuture = sessionPrepare(prepareInsert.toString)
-    insertPromise.completeWith(insertRepositoryFuture)
-    val deleteRepositoryFuture = sessionPrepare(prepareDelete.toString)
-    deletePromise.completeWith(deleteRepositoryFuture)
+  def prepareStatement()(implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
+    val iFuture = sessionPrepare(prepareInsert.toString)
+    insertPromiseTenant.completeWith(iFuture)
+
+    val dFuture = sessionPrepare(prepareDelete.toString)
+    deletePromiseTenant.completeWith(dFuture)
     for {
-      _ <- insertRepositoryFuture
-      _ <- deleteRepositoryFuture
+      _ <- iFuture
+      _ <- dFuture
     } yield Done
   }
 
   protected def sessionPrepare(stmt: String)
-                              (implicit session: CassandraSession, ec: ExecutionContext): Future[PreparedStatement] = {
+                              (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Map[TenantPersistenceId,PreparedStatement]] = {
     session.prepare(stmt).recover {
       case ex: Exception =>
         logger.error(s"Statement $stmt prepare error => ${ex.getMessage}", ex)
@@ -83,32 +82,38 @@ trait TenantReadSideTable[T <: Portfolio] {
     }
   }
 
-  protected def bindPrepare(ps: Promise[PreparedStatement], bindV: Seq[AnyRef])(implicit session: CassandraSession, ec: ExecutionContext): Future[BoundStatement] = {
-    ps.future.map(x =>
+  protected def bindPrepare(ps: Promise[Map[TenantPersistenceId,PreparedStatement]], bindV: Seq[AnyRef])
+                           (implicit tenantDataBaseId: TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+    ps.future.map { x =>
+      val psOption = x.get(tenantDataBaseId)
       try {
-        x.bind(bindV: _*)
+        psOption.map { p =>
+          TenantBoundStatement(tenantDataBaseId, p.bind(bindV: _*))
+        }
       } catch {
         case ex: Exception =>
-          logger.error(s"bindPrepare ${x.getQueryString} => ${ex.getMessage}", ex)
+          logger.error(s"bindPrepare ${psOption} => ${ex.getMessage}", ex)
           throw ex
       }
-    )
+    }
   }
 
   def insert(t: T)
-            (implicit session: CassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
+            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+    implicit val tenantDataBaseId =  TenantPersistenceId(t.tenantId)
     val bindV = getInsertBindValues(t)
-    bindPrepare(insertPromise, bindV).map(x => Some(x))
+    bindPrepare(insertPromiseTenant, bindV)
   }
 
   def delete(t: T)
-            (implicit session: CassandraSession, ec: ExecutionContext): Future[Option[BoundStatement]] = {
+            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+    implicit val tenantDataBaseId =  TenantPersistenceId(t.tenantId)
     val bindV = getDeleteBindValues(t)
-    bindPrepare(deletePromise, bindV).map(x => Some(x))
+    bindPrepare(deletePromiseTenant, bindV)
   }
 }
 
-object PortfolioByTenantIdTable extends TenantReadSideTable[Portfolio] {
+object PortfolioByTenantIdTable extends PortfolioReadSideTable[Portfolio] {
   override protected def tableScript: String =
     s"""
         CREATE TABLE IF NOT EXISTS $tableName (

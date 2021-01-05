@@ -16,6 +16,7 @@ import com.example.helloworld.impl.tenant.{TenantCassandraSession, TenantPersist
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
 import akka.actor.typed.scaladsl.adapter._
+import com.example.helloworld.impl.daos.portfolio.PortfolioDao
 import com.lightbend.lagom.scaladsl.broker.kafka.LagomKafkaComponents
 
 class HelloWorldLoader extends LagomApplicationLoader {
@@ -44,9 +45,10 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
   // Register the JSON serializer registry
   override lazy val jsonSerializerRegistry: JsonSerializerRegistry = HelloWorldSerializerRegistry
 
-  //lazy val stockDao: StockDao = wire[StockDao]
+  lazy val stockDao: StockDao = wire[StockDao]
+  lazy val portfolioDao: PortfolioDao = wire[PortfolioDao]
 
-  HelloWorldProjection.init(actorSystem.toTyped)
+  HelloWorldProjection.init(actorSystem.toTyped,stockDao,portfolioDao)
 
   persistentEntityRegistry.register(wire[PortfolioEntity])
   persistentEntityRegistry.register(wire[StockEntity])

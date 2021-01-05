@@ -2,6 +2,7 @@ package com.example.helloworld.impl.tenant
 
 import akka.actor.ActorSystem
 import akka.persistence.cassandra.session.CassandraSessionSettings
+import com.datastax.oss.driver.api.core.cql.BoundStatement
 import com.typesafe.config.{Config, ConfigObject, ConfigValue}
 
 import scala.collection.JavaConverters._
@@ -110,3 +111,5 @@ object TenantProjectionPlugin{
 
 
 case class TenantPersistenceId(tenantId:String)
+case class TenantBoundStatement(tenantId:TenantPersistenceId, boundStatement:BoundStatement)
+

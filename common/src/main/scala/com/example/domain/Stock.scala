@@ -11,4 +11,5 @@ object Stock {
     if(values.size == 2) (values(1),values(0)) else ("NA","NA")
   }
   implicit val format: Format[Stock] = Json.format
+
 }

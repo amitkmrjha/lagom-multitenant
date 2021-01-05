@@ -1,9 +1,10 @@
 package com.example.helloworld.impl.daos.portfolio
 
-import com.datastax.driver.core.Row
+import akka.Done
+import com.datastax.oss.driver.api.core.cql.Row
 import com.example.domain.{Holding, Portfolio}
 import com.example.helloworld.impl.daos.Columns
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraSession}
+import com.example.helloworld.impl.tenant.{TenantCassandraSession, TenantPersistenceId}
 
 import scala.collection.JavaConverters._
 import play.api.Logger
@@ -11,17 +12,35 @@ import play.api.libs.json.Json
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class PortfolioDao (session: CassandraSession)
+class PortfolioDao (session: TenantCassandraSession)
                    (implicit ec: ExecutionContext){
 
   private val logger = Logger(this.getClass)
-  def getAll:Future[Seq[Portfolio]] = sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString)
 
-  protected def sessionSelectAll(queryString: String): Future[Seq[Portfolio]] = {
-    session.selectAll(queryString).map(_.map(convert))
+  def insert(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
+    PortfolioByTenantIdTable.insert(stock)(session,ec).flatMap{_ match {
+      case Some(b)=>
+        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
+      case None => Future.successful(Done)
+    }}
   }
 
-  protected def sessionSelectOne(queryString: String): Future[Option[Portfolio]] = {
+  def delete(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
+    PortfolioByTenantIdTable.delete(stock)(session,ec).flatMap{_ match {
+      case Some(b)=>
+        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
+      case None => Future.successful(Done)
+    }}
+  }
+
+  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Portfolio]] =
+    sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString)
+
+  protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Portfolio]] = {
+    session.selectAll(queryString).map(_.map(r => convert(r)))
+  }
+
+  protected def sessionSelectOne(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Option[Portfolio]] = {
     session.selectOne(queryString).map(_.map(convert))
   }
 

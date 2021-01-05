@@ -6,12 +6,12 @@ import akka.stream.scaladsl.{Source}
 import akka.{Done, NotUsed}
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql._
-
+import akka.actor.typed.scaladsl.adapter._
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 
  class TenantCassandraSession(system: ActorSystem,tenantPlugins: Seq[TenantPersistencePlugin] = Seq.empty[TenantPersistencePlugin]) {
-
+   implicit val ec: ExecutionContext =system.toTyped.executionContext
    def this(system: ActorSystem) = {
      this(
        system,
@@ -45,10 +45,23 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
    @deprecated("Use executeDDL instead.", "0.100")
-   def executeCreateTable(stmt: String)(implicit  tenantPersistenceId:TenantPersistenceId): Future[Done] = executeDDL(stmt)
+   def executeCreateTable(stmt: String): Future[Done] = {
+     pluginsKeyMap.values.toSeq.foldLeft(Future.successful(Seq.empty[Done])) {
+       case (acc, pluginKey) => acc.flatMap{bs =>
+         val session = CassandraSessionRegistry(system).sessionFor(pluginKey)
+         session.executeCreateTable(stmt).map(b => bs :+ b)}
+     }.map(_ => Done)
+   }
 
-   def prepare(stmt: String)(implicit  tenantPersistenceId:TenantPersistenceId): Future[PreparedStatement] =
-     delegate.prepare(stmt)
+   def prepare(stmt: String): Future[Map[TenantPersistenceId,PreparedStatement]] = {
+     pluginsKeyMap.foldLeft(Future.successful(Map.empty[TenantPersistenceId,PreparedStatement])) {
+       case (acc, (id,pluginKey)) => acc.flatMap{bs =>
+         val session = CassandraSessionRegistry(system).sessionFor(pluginKey)
+         session.prepare(stmt).map{b =>
+         bs +  (id -> b)
+       }}
+     }
+   }
 
    def executeWriteBatch(batch: BatchStatement)(implicit  tenantPersistenceId:TenantPersistenceId): Future[Done] =
      executeWrite(batch)

@@ -13,11 +13,14 @@ import akka.projection.eventsourced.scaladsl.EventSourcedProvider
 import akka.projection.scaladsl.AtLeastOnceProjection
 import akka.projection.scaladsl.SourceProvider
 import com.example.helloworld.impl.HelloWorldEvent
+import com.example.helloworld.impl.daos.portfolio.PortfolioDao
+import com.example.helloworld.impl.daos.stock.StockDao
 
 object HelloWorldProjection {
   def init(
-            system: ActorSystem[_]
-            /*repository: ItemPopularityRepository*/): Unit = {
+            system: ActorSystem[_],
+            stockDao: StockDao,
+            portfolioDao: PortfolioDao): Unit = {
 
     CassandraProjection.createOffsetTableIfNotExists()(system)
 
@@ -25,7 +28,7 @@ object HelloWorldProjection {
       name = "HelloWorldProjection",
       HelloWorldEvent.Tag.allTags.size,
       index =>
-        ProjectionBehavior(createProjectionFor(system,index)),
+        ProjectionBehavior(createProjectionFor(system,index,stockDao,portfolioDao)),
       ShardedDaemonProcessSettings(system),
       Some(ProjectionBehavior.Stop))
   }
@@ -33,8 +36,9 @@ object HelloWorldProjection {
 
   private def createProjectionFor(
                                    system: ActorSystem[_],
-                                   /*repository: ItemPopularityRepository,*/
-                                   index: Int)
+                                   index: Int,
+                                   stockDao: StockDao,
+                                   portfolioDao: PortfolioDao)
   : AtLeastOnceProjection[Offset, EventEnvelope[HelloWorldEvent]] = {
 
     val tag = HelloWorldEvent.Tag.allTags.toSeq(index).tag
@@ -44,14 +48,13 @@ object HelloWorldProjection {
       EventSourcedProvider.eventsByTag[HelloWorldEvent](
         system = system,
         readJournalPluginId = CassandraReadJournal.Identifier,
-        /*readJournalPluginId = "tenant.cassandra-query-journal-plugin.t1",*/
         tag = tag)
 
     CassandraProjection.atLeastOnce(
       projectionId = ProjectionId("HelloWorldProjection", tag),
       sourceProvider,
       handler = () =>
-        new HelloWorldProjectionHandler(tag, system)
+        new HelloWorldProjectionHandler(tag, system,stockDao,portfolioDao)
     )
   }
 
