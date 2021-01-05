@@ -59,8 +59,4 @@ object HelloWorldProjection {
     )
   }
 
-  def initTenantSchema(system: ActorSystem[_],tenantPlugins: Seq[TenantPersistencePlugin]) = {
-
-  }
-
 }

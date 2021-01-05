@@ -17,6 +17,7 @@ import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
 import akka.actor.typed.scaladsl.adapter._
 import com.example.helloworld.impl.daos.portfolio.PortfolioDao
+import com.example.helloworld.impl.utils.TenantUtilReadSide
 import com.lightbend.lagom.scaladsl.broker.kafka.LagomKafkaComponents
 
 class HelloWorldLoader extends LagomApplicationLoader {
@@ -47,6 +48,8 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   lazy val stockDao: StockDao = wire[StockDao]
   lazy val portfolioDao: PortfolioDao = wire[PortfolioDao]
+
+  TenantUtilReadSide.initTenantSchema(actorSystem.toTyped,session,tenantPlugins)
 
   HelloWorldProjection.init(actorSystem.toTyped,stockDao,portfolioDao)
 

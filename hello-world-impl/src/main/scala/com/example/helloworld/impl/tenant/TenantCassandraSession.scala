@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
     t.tenantPersistenceId -> s"tenant.akka-projection-cassandra-plugin.${t.tenantPersistenceId.tenantId}"
   }.toMap
 
-   private def delegate(implicit tenantId:TenantPersistenceId):CassandraSession = {
+   def delegate(implicit tenantId:TenantPersistenceId):CassandraSession = {
      pluginsKeyMap.get(tenantId) match {
        case Some(s) => CassandraSessionRegistry(system).sessionFor(s)
        case None => throw new Exception(s"No akka projection config found for tenant id ${tenantId.tenantId}")
