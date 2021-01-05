@@ -10,13 +10,8 @@ import akka.actor.typed.scaladsl.adapter._
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 
- class TenantCassandraSession(system: ActorSystem,tenantPlugins: Seq[TenantPersistencePlugin] = Seq.empty[TenantPersistencePlugin]) {
+ class TenantCassandraSession(system: ActorSystem,tenantPlugins: Seq[TenantPersistencePlugin]) {
    implicit val ec: ExecutionContext =system.toTyped.executionContext
-   def this(system: ActorSystem) = {
-     this(
-       system,
-       tenantPlugins = TenantPersistencePlugin.toTenantPersistencePlugin(system))
-   }
 
   private lazy  val pluginsKeyMap = tenantPlugins.map{ t =>
     t.tenantPersistenceId -> s"tenant.akka-projection-cassandra-plugin.${t.tenantPersistenceId.tenantId}"

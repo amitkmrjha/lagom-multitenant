@@ -15,6 +15,7 @@ import akka.projection.scaladsl.SourceProvider
 import com.example.helloworld.impl.HelloWorldEvent
 import com.example.helloworld.impl.daos.portfolio.PortfolioDao
 import com.example.helloworld.impl.daos.stock.StockDao
+import com.example.helloworld.impl.tenant.TenantPersistencePlugin
 
 object HelloWorldProjection {
   def init(
@@ -56,6 +57,10 @@ object HelloWorldProjection {
       handler = () =>
         new HelloWorldProjectionHandler(tag, system,stockDao,portfolioDao)
     )
+  }
+
+  def initTenantSchema(system: ActorSystem[_],tenantPlugins: Seq[TenantPersistencePlugin]) = {
+
   }
 
 }
