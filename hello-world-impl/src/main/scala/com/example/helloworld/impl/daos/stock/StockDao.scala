@@ -1,7 +1,8 @@
 package com.example.helloworld.impl.daos.stock
 
 import akka.Done
-import com.datastax.oss.driver.api.core.cql.{Row}
+import com.datastax.driver.core.querybuilder.QueryBuilder
+import com.datastax.oss.driver.api.core.cql.Row
 import com.example.domain.Stock
 import com.example.helloworld.impl.daos.Columns
 import com.example.helloworld.impl.tenant.{TenantCassandraSession, TenantPersistenceId}
@@ -18,11 +19,7 @@ class StockDao (session: TenantCassandraSession)
   }
 
   def insert(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    StockByTenantIdTable.insert(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
+    StockByTenantIdTable.insert(stock)(session,ec)
   }
 
   def delete(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {

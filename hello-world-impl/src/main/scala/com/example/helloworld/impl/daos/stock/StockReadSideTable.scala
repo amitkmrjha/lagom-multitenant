@@ -9,6 +9,8 @@ import com.example.helloworld.impl.tenant.{TenantBoundStatement, TenantCassandra
 import play.api.Logger
 import play.api.libs.json.Json
 
+import scala.compat.java8.FutureConverters._
+
 import java.util
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -37,7 +39,7 @@ trait StockReadSideTable[T <: Stock] {
 
   protected def vL: util.List[AnyRef]
 
-  protected def prepareInsert: Insert
+  protected def prepareInsert(keySpace:String): Insert
 
   protected def getInsertBindValues(entity: T): Seq[AnyRef]
 
@@ -64,7 +66,7 @@ trait StockReadSideTable[T <: Stock] {
   }
 
   def prepareStatement()(implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
-    val iFuture = sessionPrepare(prepareInsert.toString)
+    /*val iFuture = sessionPrepare(prepareInsert.toString)
     insertPromiseTenant.completeWith(iFuture)
 
     val dFuture = sessionPrepare(prepareDelete.toString)
@@ -72,7 +74,8 @@ trait StockReadSideTable[T <: Stock] {
     for {
       _ <- iFuture
       _ <- dFuture
-    } yield Done
+    } yield Done*/
+    Future.successful(Done)
   }
 
   protected def sessionPrepare(stmt: String)
@@ -101,11 +104,32 @@ trait StockReadSideTable[T <: Stock] {
   }
 
   def insert(t: T)
-            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     implicit val tenantDataBaseId = TenantPersistenceId(t.tenantId.getOrElse(""))
+    val keyspace = session.keySpace()
+    println()
+    println(s"I am here for ${session.keySpace()}")
+    println()
+
     val bindV = getInsertBindValues(t)
-    bindPrepare(insertPromiseTenant, bindV)
+    val price = java.lang.Double.valueOf(t.price)
+    val p = QueryBuilder.insertInto(keyspace,tableName)
+      .value(Columns.StockEntityID,Stock.getEntityId(t))
+      .value(Columns.Name , t.name)
+      .value(Columns.Price , price).toString
+    println()
+    println(s"QueryBuilder ${p}")
+    println()
+
+    session.executeDDL(p).recover{
+      case ex:Exception =>
+        println(s"insert had exception ${ex}")
+        throw ex
+    }
+    //bindPrepare(insertPromiseTenant, bindV)
   }
+
+
 
   def delete(t: T)
             (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
@@ -137,7 +161,7 @@ object StockByTenantIdTable extends StockReadSideTable[Stock] {
   override protected def vL: util.List[AnyRef] = fields.map(_ =>
     QueryBuilder.bindMarker().asInstanceOf[AnyRef]).toList.asJava
 
-  override protected def prepareInsert: Insert = QueryBuilder.insertInto(tableName).values(cL, vL)
+  override protected def prepareInsert(keySpace:String): Insert = QueryBuilder.insertInto(keySpace,tableName).values(cL, vL)
 
   override protected def getInsertBindValues(entity: Stock): Seq[AnyRef] = {
     val price = java.lang.Double.valueOf(entity.price)

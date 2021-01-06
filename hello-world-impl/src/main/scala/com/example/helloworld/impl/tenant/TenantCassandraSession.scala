@@ -26,21 +26,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
      }
    }
 
-    //create Key space - we need to find a better way for this
-    tenantPlugins.foldLeft(Future.successful(Seq.empty[Done])) {
-       case (acc, p) =>
-         acc.flatMap { bs =>
-           val keyspace: String = p.sessionPlugin.config.getString("read-side-keyspace")
-           val stmt = s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH REPLICATION = { 'class' : 'SimpleStrategy','replication_factor':1 }"
-           delegate(p.tenantPersistenceId).executeDDL(stmt).map (b => bs :+ b)
-         }
-     }.map{_ =>
-      Done.getInstance()
-    }
-
-   /*val keyspace: String = tenantPlugins.head.projectionPlugin.config.getString("read-side-keyspace")
-   val stmt = s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH REPLICATION = { 'class' : 'SimpleStrategy','replication_factor':1 }"
-   Await.ready(delegate(tenantPlugins.head.tenantPersistenceId).executeDDL(stmt),100.seconds)*/
    def underlying()(implicit  tenantPersistenceId:TenantPersistenceId): Future[CqlSession] =delegate.underlying()
 
    def close(executionContext: ExecutionContext): Future[Done] = {
@@ -56,11 +41,20 @@ import scala.concurrent.{Await, ExecutionContext, Future}
      delegate.executeDDL(stmt)
    }
 
-   @deprecated("Use executeDDL instead.", "0.100")
+   def executeCreateKeySpace: Future[Done] = {
+     tenantPlugins.foldLeft(Future.successful(Seq.empty[Done])) {
+       case (acc, p) =>
+         acc.flatMap { bs =>
+           val keyspace: String = p.sessionPlugin.keyspace
+           val stmt = s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH REPLICATION = { 'class' : 'SimpleStrategy','replication_factor':1 }"
+           delegate(p.tenantPersistenceId).executeDDL(stmt).map (b => bs :+ b)
+         }
+     }.map(_ =>Done)
+   }
+
    def executeCreateTable(stmt: String): Future[Done] = {
      tenantPlugins.foldLeft(Future.successful(Seq.empty[Done])) {
        case (acc, p) => acc.flatMap{bs =>
-         val keyspace: String = p.sessionPlugin.config.getString("read-side-keyspace")
          delegate(p.tenantPersistenceId).executeDDL(stmt) .map(b => bs :+ b)
        }
      }.map(_ => Done)
@@ -114,6 +108,12 @@ import scala.concurrent.{Await, ExecutionContext, Future}
    }
 
    def getTenantKeyspace:Seq[String] = {
-     tenantPlugins.map(p => p.sessionPlugin.config.getString("read-side-keyspace"))
+     tenantPlugins.map(p => p.sessionPlugin.keyspace)
    }
+
+   def keySpace()(implicit  tenantPersistenceId:TenantPersistenceId) =
+     tenantPlugins.find(_.sessionPlugin.tenantPersistenceId.tenantId== tenantPersistenceId.tenantId) match {
+       case Some(s) =>  s.sessionPlugin.keyspace
+       case None => throw new Exception(s"No keyspace found for tenant id ${tenantPersistenceId.tenantId}")
+     }
 }

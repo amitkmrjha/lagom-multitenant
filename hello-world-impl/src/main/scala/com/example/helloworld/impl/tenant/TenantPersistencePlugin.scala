@@ -22,12 +22,14 @@ object TenantPersistencePlugin {
 
 }
 
-case class TenantSessionPlugin(tenantPersistenceId:TenantPersistenceId, config:Config)
+case class TenantSessionPlugin(tenantPersistenceId:TenantPersistenceId, keyspace:String,config:Config)
 object TenantSessionPlugin{
   def toTenantProjectionPlugin(system: ActorSystem): Seq[TenantSessionPlugin] = {
     system.settings.config.getConfig("tenant.alpakka-cassandra-plugin").root().asScala.map{
       case (k:String,v:ConfigValue) =>
-        TenantSessionPlugin(TenantPersistenceId(k) , v.asInstanceOf[ConfigObject].toConfig.withFallback(
+        val config = v.asInstanceOf[ConfigObject].toConfig
+        val keyspace: String = config.getString("read-side-keyspace")
+        TenantSessionPlugin(TenantPersistenceId(k) ,keyspace, config.withFallback(
           system.settings.config.getConfig(
             "alpakka.cassandra"
           )
@@ -35,7 +37,7 @@ object TenantSessionPlugin{
     }.toSeq
   }
   def toDefault(tenantPersistenceId:TenantPersistenceId,system: ActorSystem) : TenantSessionPlugin  = {
-    TenantSessionPlugin(tenantPersistenceId ,
+    TenantSessionPlugin(tenantPersistenceId ,s"default-${tenantPersistenceId.tenantId}",
       system.settings.config.getConfig(
         "alpakka.cassandra"
       ))
