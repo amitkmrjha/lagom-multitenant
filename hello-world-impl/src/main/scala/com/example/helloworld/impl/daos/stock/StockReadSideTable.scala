@@ -32,18 +32,15 @@ trait StockReadSideTable[T <: Stock] {
   protected def getInsertBindValues(entity: T): Seq[AnyRef]
 
   protected def getAllQueryString()
-                                 (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String
+    (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String
 
   protected def getCountQueryString()
-                                   (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String
+    (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String
 
   def createTable()
                  (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     session.getTenantKeyspace.foldLeft(Future.successful(Seq.empty[Done])) {
       case (acc, k) => acc.flatMap{bs =>
-        println()
-        println(s"input Key space ${k}")
-        println()
         sessionExecuteCreateTable(tableScript(k)).map(b => bs :+ b)
       }
     }.map(_ => Done)
@@ -62,20 +59,8 @@ trait StockReadSideTable[T <: Stock] {
             (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     implicit val tenantDataBaseId = TenantPersistenceId(t.tenantId.getOrElse(""))
     val keyspace = session.keySpace()
-    println()
-    println(s"I am here for ${session.keySpace()}")
-    println()
-
-    //val bindV = getInsertBindValues(t)
-    val price = java.lang.Double.valueOf(t.price)
-    val p = QueryBuilder.insertInto(keyspace,tableName)
-      .value(Columns.StockEntityID,Stock.getEntityId(t))
-      .value(Columns.Name , t.name)
-      .value(Columns.Price , price).toString
-    println()
-    println(s"QueryBuilder ${p}")
-    println()
-
+    val bindV = getInsertBindValues(t)
+    val p = QueryBuilder.insertInto(keyspace,tableName).values(cL,bindV.asJava).toString
     session.executeDDL(p).recover{
       case ex:Exception =>
         println(s"insert had exception ${ex}")

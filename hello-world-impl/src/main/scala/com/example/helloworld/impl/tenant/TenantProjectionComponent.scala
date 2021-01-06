@@ -10,10 +10,9 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 trait TenantProjectionComponent {
   def actorSystem: ActorSystemClassic
-  def executionContext: ExecutionContext
   lazy val tenantPlugins = TenantPersistencePlugin.toTenantPersistencePlugin(actorSystem)
-  val session: TenantCassandraSession = new TenantCassandraSession(actorSystem,tenantPlugins)
-  Await.ready(session.executeCreateKeySpace,100.seconds)
-  Await.ready(StockByTenantIdTable.createTable()(session,executionContext),20.seconds)
-  Await.ready(PortfolioByTenantIdTable.createTable()(session,executionContext),20.seconds)
+  lazy val tenantSession: TenantCassandraSession = new TenantCassandraSession(actorSystem,tenantPlugins)
+  Await.ready(tenantSession.executeCreateKeySpace,100.seconds)
+  Await.ready(StockByTenantIdTable.createTable()(tenantSession,tenantSession.ec),20.seconds)
+  Await.ready(PortfolioByTenantIdTable.createTable()(tenantSession,tenantSession.ec),20.seconds)
 }

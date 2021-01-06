@@ -112,8 +112,9 @@ import scala.concurrent.{Await, ExecutionContext, Future}
    }
 
    def keySpace()(implicit  tenantPersistenceId:TenantPersistenceId) =
-     tenantPlugins.find(_.sessionPlugin.tenantPersistenceId.tenantId== tenantPersistenceId.tenantId) match {
+     tenantPlugins.find(_.sessionPlugin.tenantPersistenceId.tenantId == tenantPersistenceId.tenantId) match {
        case Some(s) =>  s.sessionPlugin.keyspace
-       case None => throw new Exception(s"No keyspace found for tenant id ${tenantPersistenceId.tenantId}")
+       case None =>
+         throw new Exception(s"No keyspace found for tenant id ${tenantPersistenceId.tenantId}")
      }
 }

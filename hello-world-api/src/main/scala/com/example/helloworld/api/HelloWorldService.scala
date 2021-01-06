@@ -57,7 +57,7 @@ trait HelloWorldService extends Service {
         restCall(Method.PUT, "/api/v1/portfolio/:tenantId/:portfolioId/remove", removeStockFromPortfolio _),
         restCall(Method.GET, "/api/v1/portfolio/:tenantId/:portfolioId", getPortfolio _),
         restCall(Method.GET, "/api/v1/portfolio/:tenantId/:portfolioId", getInvestment _),
-        restCall(Method.GET, "/api/v1/portfolio/:tenantId/all", getAllPortFolio _)
+        restCall(Method.GET, "/api/v1/portfolio/:tenantId", getAllPortFolio _)
       )
       .withTopics(
         topic(HelloWorldService.TOPIC_NAME, helloWorldTopic _)

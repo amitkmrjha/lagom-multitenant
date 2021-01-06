@@ -48,8 +48,6 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
   lazy val stockDao: StockDao = wire[StockDao]
   lazy val portfolioDao: PortfolioDao = wire[PortfolioDao]
 
-  //TenantUtilReadSide.initTenantSchema(actorSystem.toTyped,session,tenantPlugins)
-
   HelloWorldProjection.init(actorSystem.toTyped,stockDao,portfolioDao)
 
   persistentEntityRegistry.register(wire[PortfolioEntity])

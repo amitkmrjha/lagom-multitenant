@@ -1,7 +1,7 @@
 package com.example.helloworld.impl.daos.portfolio
 
 import akka.Done
-import com.datastax.oss.driver.api.core.cql.Row
+import com.datastax.oss.driver.api.core.cql.{Row, SimpleStatement, Statement}
 import com.example.domain.{Holding, Portfolio}
 import com.example.helloworld.impl.daos.Columns
 import com.example.helloworld.impl.daos.stock.StockByTenantIdTable
@@ -26,15 +26,17 @@ class PortfolioDao (session: TenantCassandraSession)
     PortfolioByTenantIdTable.insert(stock)(session,ec)
   }
 
-  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Portfolio]] =
-    sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString()(tenantDataBaseId,session,ec))
-
-  protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Portfolio]] = {
-    session.selectAll(queryString).map(_.map(r => convert(r)))
+  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Portfolio]] = {
+    val p = PortfolioByTenantIdTable.getAllQueryString()(tenantDataBaseId,session,ec)
+    sessionSelectAll(SimpleStatement.newInstance(p))
   }
 
-  protected def sessionSelectOne(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Option[Portfolio]] = {
-    session.selectOne(queryString).map(_.map(convert))
+  protected def sessionSelectAll(stmt: Statement[_])(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Portfolio]] = {
+    session.selectAll(stmt).map(_.map(r => convert(r)))
+  }
+
+  protected def sessionSelectOne(stmt: Statement[_])(implicit tenantDataBaseId:TenantPersistenceId): Future[Option[Portfolio]] = {
+    session.selectOne(stmt).map(_.map(convert))
   }
 
   protected def convert(r: Row): Portfolio = {
