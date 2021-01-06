@@ -10,10 +10,10 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import akka.util.Timeout
 import com.example.domain.{Holding, Portfolio, Stock}
+import com.example.helloworld.impl.daos.portfolio.PortfolioDao
 import com.example.helloworld.impl.daos.stock.StockDao
 import com.example.helloworld.impl.entity.{CreatePortfolio, CreateStock, GetPortfolio, GetStock, PortfolioArchived, PortfolioCommand, PortfolioCreated, PortfolioEntity, PortfolioUpdated, StockArchived, StockCommand, StockCreated, StockEntity, StockUpdated, UpdatePortfolio, UpdateStock}
 import com.example.helloworld.impl.tenant.TenantPersistenceId
-import com.lightbend.lagom.scaladsl.api.transport.BadRequest
 import play.api.Logger
 import com.example.helloworld.impl.utils.FutureConverter.FutureOptionOps
 import com.lightbend.lagom.scaladsl.api.broker.Topic
@@ -22,7 +22,9 @@ import com.lightbend.lagom.scaladsl.broker.TopicProducer
   * Implementation of the HelloWorldService.
   */
 class HelloWorldServiceImpl(
-                             persistentEntityRegistry: PersistentEntityRegistry
+                             persistentEntityRegistry: PersistentEntityRegistry,
+                             stockDao: StockDao,
+                             portfolioDao: PortfolioDao
 )(implicit ec: ExecutionContext)
   extends HelloWorldService {
 
@@ -76,9 +78,9 @@ class HelloWorldServiceImpl(
     }
   }
 
-  override def getAllStock(tenantId:String): ServiceCall[NotUsed, Seq[Stock]] = ??? /*ServiceCall { _ =>
-    stockDao.getAll
-  }*/
+  override def getAllStock(tenantId:String): ServiceCall[NotUsed, Seq[Stock]] = ServiceCall { _ =>
+    stockDao.getAll()(TenantPersistenceId(tenantId))
+  }
 
   override def createPortfolio(tenantId:String,portfolioId:String): ServiceCall[Seq[Holding], Portfolio] = ServiceCall { input =>
     portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
@@ -135,6 +137,10 @@ class HelloWorldServiceImpl(
       .toFutureT(s"Portfolio with tenant id ${tenantId}, portfolio id ${portfolioId}  not found.")
   }
 
+  override def getAllPortFolio(tenantId: String): ServiceCall[NotUsed, Seq[Portfolio]] = ServiceCall { _ =>
+    portfolioDao.getAll()(TenantPersistenceId(tenantId))
+  }
+
   override def getInvestment(tenantId:String,portfolioId:String): ServiceCall[NotUsed, Double] = ???
 
   override def helloWorldTopic(): Topic[api.HelloWorldEvent] =
@@ -143,6 +149,8 @@ class HelloWorldServiceImpl(
         .eventStream(tag, fromOffset)
         .map(ev => (convertEvent(ev), ev.offset))
     }
+
+
   private def convertEvent(
                             helloWorldEvent: EventStreamElement[HelloWorldEvent]
                           ): api.HelloWorldEvent = {
@@ -171,5 +179,6 @@ class HelloWorldServiceImpl(
   private def logHelloWorldEvent(msg: String): Unit = {
     logger.info(s"Kafka offset event [ ${msg} ]")
   }
+
 
 }

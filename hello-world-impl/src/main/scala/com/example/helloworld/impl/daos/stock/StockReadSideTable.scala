@@ -1,27 +1,21 @@
 package com.example.helloworld.impl.daos.stock
 
 import akka.Done
-import com.datastax.driver.core.querybuilder.{Delete, Insert, QueryBuilder}
-import com.datastax.oss.driver.api.core.cql.PreparedStatement
+import com.datastax.driver.core.querybuilder.{QueryBuilder}
 import com.example.domain.Stock
 import com.example.helloworld.impl.daos.{ColumnFamilies, Columns}
-import com.example.helloworld.impl.tenant.{TenantBoundStatement, TenantCassandraSession, TenantPersistenceId}
+import com.example.helloworld.impl.tenant.{TenantCassandraSession, TenantPersistenceId}
 import play.api.Logger
 import play.api.libs.json.Json
 
 import scala.compat.java8.FutureConverters._
-
 import java.util
 import scala.collection.JavaConverters._
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 
 trait StockReadSideTable[T <: Stock] {
 
   private val logger = Logger(this.getClass)
-
-  protected val insertPromiseTenant: Promise[Map[TenantPersistenceId, PreparedStatement]] = Promise[Map[TenantPersistenceId, PreparedStatement]]
-
-  protected val deletePromiseTenant: Promise[Map[TenantPersistenceId, PreparedStatement]] = Promise[Map[TenantPersistenceId, PreparedStatement]]
 
   protected def tableName: String
 
@@ -31,26 +25,25 @@ trait StockReadSideTable[T <: Stock] {
 
   protected def fields: Seq[String]
 
-  protected def prepareDelete: Delete.Where
-
-  protected def getDeleteBindValues(entity: T): Seq[AnyRef]
-
   protected def cL: util.List[String]
 
   protected def vL: util.List[AnyRef]
 
-  protected def prepareInsert(keySpace:String): Insert
-
   protected def getInsertBindValues(entity: T): Seq[AnyRef]
 
-  protected def getAllQueryString: String
+  protected def getAllQueryString()
+                                 (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String
 
-  protected def getCountQueryString: String
+  protected def getCountQueryString()
+                                   (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String
 
   def createTable()
                  (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     session.getTenantKeyspace.foldLeft(Future.successful(Seq.empty[Done])) {
       case (acc, k) => acc.flatMap{bs =>
+        println()
+        println(s"input Key space ${k}")
+        println()
         sessionExecuteCreateTable(tableScript(k)).map(b => bs :+ b)
       }
     }.map(_ => Done)
@@ -65,44 +58,6 @@ trait StockReadSideTable[T <: Stock] {
     }
   }
 
-  def prepareStatement()(implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
-    /*val iFuture = sessionPrepare(prepareInsert.toString)
-    insertPromiseTenant.completeWith(iFuture)
-
-    val dFuture = sessionPrepare(prepareDelete.toString)
-    deletePromiseTenant.completeWith(dFuture)
-    for {
-      _ <- iFuture
-      _ <- dFuture
-    } yield Done*/
-    Future.successful(Done)
-  }
-
-  protected def sessionPrepare(stmt: String)
-                              (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Map[TenantPersistenceId, PreparedStatement]] = {
-    session.prepare(stmt).recover {
-      case ex: Exception =>
-        logger.error(s"Statement $stmt prepare error => ${ex.getMessage}", ex)
-        throw ex
-    }
-  }
-
-  protected def bindPrepare(ps: Promise[Map[TenantPersistenceId, PreparedStatement]], bindV: Seq[AnyRef])
-                           (implicit tenantDataBaseId: TenantPersistenceId, session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
-    ps.future.map { x =>
-      val psOption = x.get(tenantDataBaseId)
-      try {
-        psOption.map { p =>
-          TenantBoundStatement(tenantDataBaseId, p.bind(bindV: _*))
-        }
-      } catch {
-        case ex: Exception =>
-          logger.error(s"bindPrepare ${psOption} => ${ex.getMessage}", ex)
-          throw ex
-      }
-    }
-  }
-
   def insert(t: T)
             (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     implicit val tenantDataBaseId = TenantPersistenceId(t.tenantId.getOrElse(""))
@@ -111,7 +66,7 @@ trait StockReadSideTable[T <: Stock] {
     println(s"I am here for ${session.keySpace()}")
     println()
 
-    val bindV = getInsertBindValues(t)
+    //val bindV = getInsertBindValues(t)
     val price = java.lang.Double.valueOf(t.price)
     val p = QueryBuilder.insertInto(keyspace,tableName)
       .value(Columns.StockEntityID,Stock.getEntityId(t))
@@ -126,20 +81,23 @@ trait StockReadSideTable[T <: Stock] {
         println(s"insert had exception ${ex}")
         throw ex
     }
-    //bindPrepare(insertPromiseTenant, bindV)
   }
-
-
-
   def delete(t: T)
-            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Option[TenantBoundStatement]] = {
+            (implicit session: TenantCassandraSession, ec: ExecutionContext): Future[Done] = {
     implicit val tenantDataBaseId = TenantPersistenceId(t.tenantId.getOrElse(""))
-    val bindV = getDeleteBindValues(t)
-    bindPrepare(deletePromiseTenant, bindV)
+    val keyspace = session.keySpace()
+    val p =  QueryBuilder.delete().from(keyspace,tableName)
+      .where(QueryBuilder.eq(Columns.StockEntityID, Stock.getEntityId(t))).toString
+    session.executeDDL(p).recover{
+      case ex:Exception =>
+        println(s"delete had exception ${ex}")
+        throw ex
+    }
   }
 }
 
 object StockByTenantIdTable extends StockReadSideTable[Stock] {
+
   override protected def tableScript(keySpace:String): String =
     s"""
         CREATE TABLE IF NOT EXISTS $keySpace.$tableName (
@@ -161,8 +119,6 @@ object StockByTenantIdTable extends StockReadSideTable[Stock] {
   override protected def vL: util.List[AnyRef] = fields.map(_ =>
     QueryBuilder.bindMarker().asInstanceOf[AnyRef]).toList.asJava
 
-  override protected def prepareInsert(keySpace:String): Insert = QueryBuilder.insertInto(keySpace,tableName).values(cL, vL)
-
   override protected def getInsertBindValues(entity: Stock): Seq[AnyRef] = {
     val price = java.lang.Double.valueOf(entity.price)
     val bindValues: Seq[AnyRef] = fields.map(x => x match {
@@ -173,13 +129,17 @@ object StockByTenantIdTable extends StockReadSideTable[Stock] {
     bindValues
   }
 
-  override val getAllQueryString: String = {
-    val select = QueryBuilder.select().from(tableName)
+  override def getAllQueryString()
+    (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String = {
+    val keyspace = session.keySpace()
+    val select = QueryBuilder.select().from(keyspace,tableName)
     select.toString
   }
 
-  override val getCountQueryString: String = {
-    val countAllQuery = QueryBuilder.select().countAll().from(tableName)
+  override def getCountQueryString()
+    (implicit tenantDataBaseId:TenantPersistenceId,session: TenantCassandraSession, ec: ExecutionContext): String = {
+    val keyspace = session.keySpace()
+    val countAllQuery = QueryBuilder.select().countAll().from(keyspace,tableName)
     countAllQuery.toString
   }
 
@@ -187,13 +147,4 @@ object StockByTenantIdTable extends StockReadSideTable[Stock] {
 
   override protected def primaryKey: String = s"${Columns.StockEntityID}"
 
-  override protected def prepareDelete: Delete.Where = QueryBuilder.delete().from(tableName)
-    .where(QueryBuilder.eq(Columns.StockEntityID, QueryBuilder.bindMarker()))
-
-  override protected def getDeleteBindValues(entity: Stock): Seq[AnyRef] = {
-    val bindValues: Seq[AnyRef] = Seq(
-      Stock.getEntityId(entity)
-    )
-    bindValues
-  }
 }

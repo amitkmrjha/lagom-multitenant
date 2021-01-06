@@ -14,23 +14,16 @@ class StockDao (session: TenantCassandraSession)
 
   private val logger = Logger(this.getClass)
 
-  def createReadTable():Future[Done] = {
-    StockByTenantIdTable.createTable()(session,ec)
-  }
-
   def insert(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
     StockByTenantIdTable.insert(stock)(session,ec)
   }
 
   def delete(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    StockByTenantIdTable.delete(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
+    StockByTenantIdTable.delete(stock)(session,ec)
   }
 
-  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Stock]] = sessionSelectAll(StockByTenantIdTable.getAllQueryString)
+  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Stock]] =
+    sessionSelectAll(StockByTenantIdTable.getAllQueryString()(tenantDataBaseId,session,ec))
 
    protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Stock]] = {
     session.selectAll(queryString).map(_.map(convert))

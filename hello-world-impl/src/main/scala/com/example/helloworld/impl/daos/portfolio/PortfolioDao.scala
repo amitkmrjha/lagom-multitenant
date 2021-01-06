@@ -18,28 +18,16 @@ class PortfolioDao (session: TenantCassandraSession)
 
   private val logger = Logger(this.getClass)
 
-  def createReadTable():Future[Done] = {
-    PortfolioByTenantIdTable.createTable()(session,ec)
-  }
-
   def insert(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    PortfolioByTenantIdTable.insert(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
+    PortfolioByTenantIdTable.insert(stock)(session,ec)
   }
 
   def delete(stock:Portfolio)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
-    PortfolioByTenantIdTable.delete(stock)(session,ec).flatMap{_ match {
-      case Some(b)=>
-        session.underlying.map(_.execute(b.boundStatement)).map(_ => Done)
-      case None => Future.successful(Done)
-    }}
+    PortfolioByTenantIdTable.insert(stock)(session,ec)
   }
 
   def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Portfolio]] =
-    sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString)
+    sessionSelectAll(PortfolioByTenantIdTable.getAllQueryString()(tenantDataBaseId,session,ec))
 
   protected def sessionSelectAll(queryString: String)(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Portfolio]] = {
     session.selectAll(queryString).map(_.map(r => convert(r)))

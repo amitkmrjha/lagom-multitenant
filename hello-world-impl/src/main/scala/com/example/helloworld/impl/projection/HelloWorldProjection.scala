@@ -24,8 +24,8 @@ object HelloWorldProjection {
             portfolioDao: PortfolioDao): Unit = {
 
     CassandraProjection.createOffsetTableIfNotExists()(system)
-    stockDao.createReadTable()
-    portfolioDao.createReadTable()
+    //stockDao.createReadTable()
+    //portfolioDao.createReadTable()
 
 
     ShardedDaemonProcess(system).init(

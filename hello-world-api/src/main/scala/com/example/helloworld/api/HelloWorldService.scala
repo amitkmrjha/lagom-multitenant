@@ -33,6 +33,7 @@ trait HelloWorldService extends Service {
   def addStockToPortfolio(tenantId:String,portfolioId:String) : ServiceCall[Holding, Portfolio]
   def removeStockFromPortfolio(tenantId:String,portfolioId:String) : ServiceCall[Holding, Portfolio]
   def getPortfolio(tenantId:String,portfolioId:String) : ServiceCall[NotUsed, Portfolio]
+  def getAllPortFolio(tenantId:String): ServiceCall[NotUsed, Seq[Portfolio]]
   def getInvestment(tenantId:String,portfolioId:String) : ServiceCall[NotUsed, Double]
 
   /**
@@ -55,7 +56,8 @@ trait HelloWorldService extends Service {
         restCall(Method.PUT, "/api/v1/portfolio/:tenantId/:portfolioId/add", addStockToPortfolio _),
         restCall(Method.PUT, "/api/v1/portfolio/:tenantId/:portfolioId/remove", removeStockFromPortfolio _),
         restCall(Method.GET, "/api/v1/portfolio/:tenantId/:portfolioId", getPortfolio _),
-        restCall(Method.GET, "/api/v1/portfolio/:tenantId/:portfolioId", getInvestment _)
+        restCall(Method.GET, "/api/v1/portfolio/:tenantId/:portfolioId", getInvestment _),
+        restCall(Method.GET, "/api/v1/portfolio/:tenantId/all", getAllPortFolio _)
       )
       .withTopics(
         topic(HelloWorldService.TOPIC_NAME, helloWorldTopic _)
