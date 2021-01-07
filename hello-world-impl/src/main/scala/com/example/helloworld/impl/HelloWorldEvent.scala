@@ -7,6 +7,6 @@ trait HelloWorldEvent extends AggregateEvent[HelloWorldEvent] {
 }
 
 object HelloWorldEvent {
-  val NumShards = 4
+  val NumShards = 1
   val Tag: AggregateEventShards[HelloWorldEvent] = AggregateEventTag.sharded[HelloWorldEvent](NumShards)
 }

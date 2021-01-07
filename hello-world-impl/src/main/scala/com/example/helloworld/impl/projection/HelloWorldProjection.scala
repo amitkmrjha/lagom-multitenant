@@ -7,43 +7,44 @@ import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.Offset
 import akka.projection.ProjectionBehavior
 import akka.projection.ProjectionId
+import akka.projection.cassandra.internal.TenantCassandraProjection
 import akka.projection.cassandra.scaladsl.CassandraProjection
 import akka.projection.eventsourced.EventEnvelope
 import akka.projection.eventsourced.scaladsl.EventSourcedProvider
 import akka.projection.scaladsl.AtLeastOnceProjection
 import akka.projection.scaladsl.SourceProvider
 import com.example.helloworld.impl.HelloWorldEvent
+import com.example.helloworld.impl.daos.portfolio.PortfolioDao
+import com.example.helloworld.impl.daos.stock.StockDao
+import com.example.helloworld.impl.tenant.TenantPersistencePlugin
 
 object HelloWorldProjection {
   def init(
-            system: ActorSystem[_]
-            /*repository: ItemPopularityRepository*/): Unit = {
-    println()
-    println(s"HelloWorld Projection alpakka.cassandra System config ")
-    println(s"${system.settings.config.getConfig("alpakka.cassandra")}")
-    println()
+            system: ActorSystem[_],
+            stockDao: StockDao,
+            portfolioDao: PortfolioDao,
+            tenantPlugins: Seq[TenantPersistencePlugin] ): Unit = {
 
-    println()
-    println(s"HelloWorld Projection akka.projection.cassandra System config ")
-    println(s"${system.settings.config.getConfig("akka.projection.cassandra")}")
-    println()
+    tenantPlugins.map{ p =>
+      TenantCassandraProjection.createOffsetTableIfNotExists(Option(p.projectionPlugin.pluginId))(system)
+      ShardedDaemonProcess(system).init(
+        name = s"HelloWorldProjection-${p.tenantPersistenceId.tenantId}",
+        HelloWorldEvent.Tag.allTags.size,
+        index =>
+          ProjectionBehavior(createProjectionFor(system,index,stockDao,portfolioDao,p)),
+        ShardedDaemonProcessSettings(system),
+        Some(ProjectionBehavior.Stop))
+    }
 
-
-
-    ShardedDaemonProcess(system).init(
-      name = "HelloWorldProjection",
-      HelloWorldEvent.Tag.allTags.size,
-      index =>
-        ProjectionBehavior(createProjectionFor(system,index)),
-      ShardedDaemonProcessSettings(system),
-      Some(ProjectionBehavior.Stop))
   }
 
 
   private def createProjectionFor(
                                    system: ActorSystem[_],
-                                   /*repository: ItemPopularityRepository,*/
-                                   index: Int)
+                                   index: Int,
+                                   stockDao: StockDao,
+                                   portfolioDao: PortfolioDao,
+                                   tenantPlugin:TenantPersistencePlugin)
   : AtLeastOnceProjection[Offset, EventEnvelope[HelloWorldEvent]] = {
 
     val tag = HelloWorldEvent.Tag.allTags.toSeq(index).tag
@@ -52,15 +53,15 @@ object HelloWorldProjection {
     : SourceProvider[Offset, EventEnvelope[HelloWorldEvent]] =
       EventSourcedProvider.eventsByTag[HelloWorldEvent](
         system = system,
-        /*readJournalPluginId = CassandraReadJournal.Identifier,*/
-        readJournalPluginId = "tenant.cassandra-query-journal-plugin.t1",
+        readJournalPluginId = tenantPlugin.queryJournalPlugin.pluginId,
         tag = tag)
 
-    CassandraProjection.atLeastOnce(
+    TenantCassandraProjection.atLeastOnce(
       projectionId = ProjectionId("HelloWorldProjection", tag),
       sourceProvider,
       handler = () =>
-        new HelloWorldProjectionHandler(tag, system)
+        new HelloWorldProjectionHandler(tag, system,stockDao,portfolioDao),
+      tenantPlugin.projectionPlugin.pluginId
     )
   }
 

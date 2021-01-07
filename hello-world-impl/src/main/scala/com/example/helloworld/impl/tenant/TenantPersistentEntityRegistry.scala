@@ -21,9 +21,17 @@ import scala.reflect.ClassTag
        //CassandraKeyspaceConfig.validateKeyspace("cassandra-journal", system.settings.config, log)
        //CassandraKeyspaceConfig.validateKeyspace("cassandra-snapshot-store", system.settings.config, log)
        protected override val name: Option[String] = Option(s"CassandraPersistentEntityRegistry-${tenantPlugin.tenantPersistenceId.tenantId}")
-       protected override val journalPluginId = s"tenant.cassandra-journal-plugin.${tenantPlugin.tenantPersistenceId.tenantId}"
-       protected override val snapshotPluginId = s"tenant.cassandra-snapshot-store-plugin.${tenantPlugin.tenantPersistenceId.tenantId}"
-       protected override val queryPluginId = Some(s"tenant.cassandra-query-journal-plugin.${tenantPlugin.tenantPersistenceId.tenantId}")
+       println()
+       println(s"journalPluginId ${tenantPlugin.journalPlugin.pluginId}")
+       println(s"snapshotPluginId ${tenantPlugin.snapshotPlugin.pluginId}")
+       println(s"queryPluginId ${tenantPlugin.queryJournalPlugin.pluginId}")
+       println(s"projectionPluginId ${tenantPlugin.projectionPlugin.pluginId}")
+       println()
+       println()
+
+       protected override val journalPluginId = s"${tenantPlugin.journalPlugin.pluginId}"
+       protected override val snapshotPluginId = s"${tenantPlugin.snapshotPlugin.pluginId}"
+       protected override val queryPluginId = Some(s"${tenantPlugin.queryJournalPlugin.pluginId}")
      })
    }.toMap
 

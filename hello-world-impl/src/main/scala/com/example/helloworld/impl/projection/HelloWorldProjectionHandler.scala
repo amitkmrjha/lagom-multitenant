@@ -8,13 +8,17 @@ import akka.projection.eventsourced.EventEnvelope
 import akka.projection.scaladsl.Handler
 import com.example.domain.Stock
 import com.example.helloworld.impl.HelloWorldEvent
+import com.example.helloworld.impl.daos.portfolio.PortfolioDao
+import com.example.helloworld.impl.daos.stock.StockDao
 import com.example.helloworld.impl.entity.{PortfolioArchived, PortfolioCreated, PortfolioUpdated, StockArchived, StockCreated, StockUpdated}
 import org.slf4j.LoggerFactory
+import com.example.helloworld.impl.utils.TenantExtract._
 
 class HelloWorldProjectionHandler(
                                    tag: String,
-                                   system: ActorSystem[_]
-                                   /*repo: ItemPopularityRepository*/)
+                                   system: ActorSystem[_],
+                                   stockDao: StockDao,
+                                   portfolioDao: PortfolioDao)
   extends Handler[EventEnvelope[HelloWorldEvent]]() {
 
   private val log = LoggerFactory.getLogger(getClass)
@@ -25,30 +29,29 @@ class HelloWorldProjectionHandler(
     envelope.event match {
       case StockCreated(stock: Stock) =>
         logHelloWorldEvent(s"Stock created with tenant id ${stock.tenantId} and stock id ${stock.stockId}")
-        Future.successful(Done)
+        stockDao.insert(stock)(stock.toTenant)
       case StockUpdated(stock: Stock) =>
         logHelloWorldEvent(s"Stock Updated with tenant id ${stock.tenantId} and stock id ${stock.stockId}")
-        Future.successful(Done)
+        stockDao.insert(stock)(stock.toTenant)
       case StockArchived(stock) =>
         logHelloWorldEvent(s"Stock Archived with tenant id ${stock.tenantId} and stock id ${stock.stockId}")
-        Future.successful(Done)
+        stockDao.delete(stock)(stock.toTenant)
       case PortfolioCreated(portfolio) =>
         logHelloWorldEvent(s"Portfolio Created with tenant id ${portfolio.tenantId} and stock id ${portfolio.portfolioId}")
-        Future.successful(Done)
+        portfolioDao.insert(portfolio)(portfolio.toTenant)
       case PortfolioUpdated(portfolio) =>
         logHelloWorldEvent(s"Portfolio Updated with tenant id ${portfolio.tenantId} and stock id ${portfolio.portfolioId}")
-        Future.successful(Done)
+        portfolioDao.insert(portfolio)(portfolio.toTenant)
       case PortfolioArchived(portfolio) =>
         logHelloWorldEvent(s"Portfolio Archived with tenant id ${portfolio.tenantId} and stock id ${portfolio.portfolioId}")
-        Future.successful(Done)
+        portfolioDao.delete(portfolio)(portfolio.toTenant)
       case _ =>
         Future.successful(Done)
     }
   }
 
   private def logHelloWorldEvent(msg: String): Unit = {
-      log.info(msg)
+    log.info(s"Projection offset event [ ${msg} ]")
   }
-
 }
 

@@ -1,31 +1,45 @@
 package com.example.helloworld.impl.daos.stock
 
-import com.datastax.driver.core.Row
+import akka.Done
+import com.datastax.oss.driver.api.core.cql.{Row, SimpleStatement, Statement}
 import com.example.domain.Stock
 import com.example.helloworld.impl.daos.Columns
-import com.lightbend.lagom.scaladsl.persistence.cassandra.{CassandraSession}
+import com.example.helloworld.impl.tenant.{TenantCassandraSession, TenantPersistenceId}
 import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
-class StockDao (session: CassandraSession)
+class StockDao (tenantSession: TenantCassandraSession)
                (implicit ec: ExecutionContext){
 
   private val logger = Logger(this.getClass)
-  def getAll:Future[Seq[Stock]] = sessionSelectAll(StockByIdTable.getAllQueryString)
 
-   protected def sessionSelectAll(queryString: String): Future[Seq[Stock]] = {
-    session.selectAll(queryString).map(_.map(convert))
+  def insert(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
+    StockByTenantIdTable.insert(stock)(tenantSession,ec)
   }
 
-  protected def sessionSelectOne(queryString: String): Future[Option[Stock]] = {
-    session.selectOne(queryString).map(_.map(convert))
+  def delete(stock:Stock)(implicit tenantDataBaseId:TenantPersistenceId): Future[Done] = {
+    StockByTenantIdTable.delete(stock)(tenantSession,ec)
+  }
+
+  def getAll()(implicit tenantDataBaseId:TenantPersistenceId):Future[Seq[Stock]] = {
+    val p = StockByTenantIdTable.getAllQueryString()(tenantDataBaseId,tenantSession,ec)
+    sessionSelectAll(SimpleStatement.newInstance(p))
+  }
+
+  protected def sessionSelectAll(stmt: Statement[_])(implicit tenantDataBaseId:TenantPersistenceId): Future[Seq[Stock]] = {
+    tenantSession.selectAll(stmt).map(_.map(convert))
+  }
+
+
+  protected def sessionSelectOne(stmt: Statement[_])(implicit tenantDataBaseId:TenantPersistenceId): Future[Option[Stock]] = {
+    tenantSession.selectOne(stmt).map(_.map(convert))
   }
 
   protected def convert(r: Row): Stock = {
-    Stock(tenantId(r),stockId(r),name(r),price(r))
+    Stock(Option(stockId(r)._1),stockId(r)._2,name(r),price(r))
   }
-  private def tenantId(r: Row): Option[String] =  Option(r.getString(Columns.TenantId))
-  private def stockId(r: Row): String =  r.getString(Columns.StockId)
+
+  private def stockId(r: Row) =  Stock.getStockIds(r.getString(Columns.StockEntityID))
   private def name(r: Row): String =  r.getString(Columns.Name)
   private def price(r: Row): Double =  r.getDouble(Columns.Price)
 }

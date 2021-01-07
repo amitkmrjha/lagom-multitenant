@@ -43,7 +43,7 @@ val akkaOverride = Seq(
 
 
 lazy val `hello-world` = (project in file("."))
-  .aggregate(`common`,`hello-world-api`, `hello-world-impl`)
+  .aggregate(`common`,`tenant-akka-projection-cassandra`,`hello-world-api`, `hello-world-impl`)
 
 lazy val `common` = (project in file("common"))
   .settings(
@@ -52,6 +52,15 @@ lazy val `common` = (project in file("common"))
       scalaTest
     )
   )
+
+lazy val `tenant-akka-projection-cassandra` = (project in file("tenant-akka-projection-cassandra"))
+  .settings(
+    libraryDependencies ++= Seq(
+      akkaProjectionCassandra,
+      scalaTest
+    )
+  )
+
 
 lazy val `hello-world-api` = (project in file("hello-world-api"))
   .settings(
@@ -78,7 +87,7 @@ lazy val `hello-world-impl` = (project in file("hello-world-impl"))
     dependencyOverrides ++= akkaOverride :+ "io.dropwizard.metrics" % "metrics-core" % "3.2.6",
   )
   .settings(lagomForkedTestSettings)
-  .dependsOn(`common`,`hello-world-api`)
+  .dependsOn(`common`,`tenant-akka-projection-cassandra`,`hello-world-api`)
 
 
 
