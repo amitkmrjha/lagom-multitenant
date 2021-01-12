@@ -17,6 +17,7 @@ import akka.actor.typed.scaladsl.adapter._
 import com.example.helloworld.impl.daos.portfolio.PortfolioDao
 import com.example.helloworld.impl.projection.publish.HelloWorldPublishProjection
 import com.example.helloworld.impl.projection.query.HelloWorldQueryProjection
+import com.example.helloworld.impl.projection.subscribe.HelloWorldEventConsumer
 
 
 class HelloWorldLoader extends LagomApplicationLoader {
@@ -50,7 +51,8 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
 
   HelloWorldQueryProjection.init(actorSystem.toTyped,stockDao,portfolioDao,tenantPlugins )
   HelloWorldPublishProjection.init(actorSystem.toTyped,tenantPlugins)
-
+  HelloWorldEventConsumer.init(actorSystem.toTyped)
+  
   tenantPersistentEntityRegistry.register(wire[PortfolioEntity])
   tenantPersistentEntityRegistry.register(wire[StockEntity])
 }

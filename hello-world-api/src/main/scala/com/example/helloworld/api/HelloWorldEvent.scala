@@ -15,6 +15,11 @@ object HelloWorldEvent {
     def se:Array[Byte]  = Json.toBytes(Json.toJson(event))
     //def de:HelloWorldEvent  = Json.toBytes(Json.toJson(event))
   }
+
+  implicit class EventDeSerializerOps(records:Array[Byte]){
+    def de:HelloWorldEvent = Json.parse(records).as[HelloWorldEvent]
+    //def de:HelloWorldEvent  = Json.toBytes(Json.toJson(event))
+  }
 }
 
 case class PortfolioCreated(tenantId:String,portfolio:Portfolio) extends HelloWorldEvent
