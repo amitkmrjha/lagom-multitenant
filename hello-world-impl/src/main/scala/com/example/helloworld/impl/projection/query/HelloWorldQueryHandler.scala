@@ -1,7 +1,5 @@
-package com.example.helloworld.impl.projection
+package com.example.helloworld.impl.projection.query
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
 import akka.Done
 import akka.actor.typed.ActorSystem
 import akka.projection.eventsourced.EventEnvelope
@@ -10,11 +8,13 @@ import com.example.domain.Stock
 import com.example.helloworld.impl.HelloWorldEvent
 import com.example.helloworld.impl.daos.portfolio.PortfolioDao
 import com.example.helloworld.impl.daos.stock.StockDao
-import com.example.helloworld.impl.entity.{PortfolioArchived, PortfolioCreated, PortfolioUpdated, StockArchived, StockCreated, StockUpdated}
-import org.slf4j.LoggerFactory
+import com.example.helloworld.impl.entity._
 import com.example.helloworld.impl.utils.TenantExtract._
+import org.slf4j.LoggerFactory
 
-class HelloWorldProjectionHandler(
+import scala.concurrent.{ExecutionContext, Future}
+
+class HelloWorldQueryHandler(
                                    tag: String,
                                    system: ActorSystem[_],
                                    stockDao: StockDao,

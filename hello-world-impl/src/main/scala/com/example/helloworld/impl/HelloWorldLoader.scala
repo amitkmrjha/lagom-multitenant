@@ -1,22 +1,23 @@
 package com.example.helloworld.impl
 
-import akka.cluster.sharding.typed.ShardingEnvelope
-import akka.cluster.sharding.typed.scaladsl.{Entity, EntityTypeKey}
 import com.lightbend.lagom.scaladsl.api.ServiceLocator
 import com.lightbend.lagom.scaladsl.api.ServiceLocator.NoServiceLocator
 import com.lightbend.lagom.scaladsl.persistence.cassandra.CassandraPersistenceComponents
+import com.lightbend.lagom.scaladsl.broker.kafka.LagomKafkaComponents
 import com.lightbend.lagom.scaladsl.server._
 import com.lightbend.lagom.scaladsl.devmode.LagomDevModeComponents
 import play.api.libs.ws.ahc.AhcWSComponents
 import com.example.helloworld.api.HelloWorldService
 import com.example.helloworld.impl.daos.stock.StockDao
 import com.example.helloworld.impl.entity.{PortfolioEntity, StockEntity}
-import com.example.helloworld.impl.projection.HelloWorldProjection
-import com.example.helloworld.impl.tenant.{TenantPersistenceComponent, TenantPersistencePlugin, TenantPersistentEntityRegistry}
+import com.example.helloworld.impl.tenant.TenantPersistenceComponent
 import com.lightbend.lagom.scaladsl.playjson.JsonSerializerRegistry
 import com.softwaremill.macwire._
 import akka.actor.typed.scaladsl.adapter._
 import com.example.helloworld.impl.daos.portfolio.PortfolioDao
+import com.example.helloworld.impl.projection.publish.HelloWorldPublishProjection
+import com.example.helloworld.impl.projection.query.HelloWorldQueryProjection
+
 
 class HelloWorldLoader extends LagomApplicationLoader {
 
@@ -34,6 +35,7 @@ class HelloWorldLoader extends LagomApplicationLoader {
 abstract class HelloWorldApplication(context: LagomApplicationContext)
   extends LagomApplication(context)
     /*with CassandraPersistenceComponents*/
+    /*with LagomKafkaComponents*/
     with TenantPersistenceComponent
     with AhcWSComponents {
 
@@ -46,7 +48,8 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
   lazy val stockDao: StockDao = wire[StockDao]
   lazy val portfolioDao: PortfolioDao = wire[PortfolioDao]
 
-  HelloWorldProjection.init(actorSystem.toTyped,stockDao,portfolioDao,tenantPlugins )
+  HelloWorldQueryProjection.init(actorSystem.toTyped,stockDao,portfolioDao,tenantPlugins )
+  HelloWorldPublishProjection.init(actorSystem.toTyped,tenantPlugins)
 
   tenantPersistentEntityRegistry.register(wire[PortfolioEntity])
   tenantPersistentEntityRegistry.register(wire[StockEntity])

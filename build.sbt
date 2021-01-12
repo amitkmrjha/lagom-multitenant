@@ -13,6 +13,7 @@ val playJsonDerivedCodecs = "org.julienrf" %% "play-json-derived-codecs" % "7.0.
 val akkaProjection = "com.lightbend.akka" %% "akka-projection-core" % akkaProjectionVersion
 val akkaProjectionEventSourced = "com.lightbend.akka" %% "akka-projection-eventsourced" % akkaProjectionVersion
 val akkaProjectionCassandra = "com.lightbend.akka" %% "akka-projection-cassandra" % akkaProjectionVersion
+val akkaProjectionKafka  = "com.lightbend.akka" %% "akka-projection-kafka" % "1.0.0"
 
 val akkaOverride = Seq(
   "com.typesafe.akka" %% "akka-actor"                  % akkaVersion,
@@ -81,6 +82,7 @@ lazy val `hello-world-impl` = (project in file("hello-world-impl"))
       akkaProjection,
       akkaProjectionEventSourced,
       akkaProjectionCassandra,
+      akkaProjectionKafka,
       macwire,
       scalaTest
     ),

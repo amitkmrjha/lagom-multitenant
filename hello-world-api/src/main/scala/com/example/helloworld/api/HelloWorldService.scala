@@ -10,7 +10,7 @@ import com.lightbend.lagom.scaladsl.api.{Descriptor, Service, ServiceCall}
 import play.api.libs.json.{Format, Json}
 
 object HelloWorldService  {
-  val TOPIC_NAME = "helloworld"
+  val TOPIC_NAME = "hello-world-events"
 }
 
 
