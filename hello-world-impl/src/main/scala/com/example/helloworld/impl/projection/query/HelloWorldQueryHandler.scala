@@ -51,7 +51,7 @@ class HelloWorldQueryHandler(
   }
 
   private def logHelloWorldEvent(msg: String): Unit = {
-    log.info(s"Projection offset event [ ${msg} ]")
+    log.info(s"Query Projection offset event [ ${msg} ]")
   }
 }
 

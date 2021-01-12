@@ -26,8 +26,8 @@ class HelloWorldPublishHandler (system: ActorSystem[_],
     // using the cartId as the key and `DefaultPartitioner` will select partition based on the key
     // so that events for same cart always ends up in same partition
     //val key = event.cartId
-    val key = s"HelloWorldPublish"
-    val producerRecord = new ProducerRecord(topic, key, serialize(event))
+    val se = serialize(event)
+    val producerRecord = new ProducerRecord(topic, se._1, se._2)
     val result = sendProducer.send(producerRecord).map { recordMetadata =>
       log.info(
         "Published event [{}] to topic/partition {}/{}",
@@ -39,30 +39,11 @@ class HelloWorldPublishHandler (system: ActorSystem[_],
     result
   }
 
-  private def serialize(event: HelloWorldEvent): Array[Byte] = {
-    val protoMessage = event match {
-      case StockCreated(stock: Stock) =>
-        Array.emptyByteArray
-      case StockUpdated(stock: Stock) =>
-        logHelloWorldEvent(s"Stock Updated with tenant id ${stock.tenantId} and stock id ${stock.stockId}")
-        Array.emptyByteArray
-      case StockArchived(stock) =>
-        logHelloWorldEvent(s"Stock Archived with tenant id ${stock.tenantId} and stock id ${stock.stockId}")
-        Array.emptyByteArray
-      case PortfolioCreated(portfolio) =>
-        logHelloWorldEvent(s"Portfolio Created with tenant id ${portfolio.tenantId} and stock id ${portfolio.portfolioId}")
-        Array.emptyByteArray
-      case PortfolioUpdated(portfolio) =>
-        logHelloWorldEvent(s"Portfolio Updated with tenant id ${portfolio.tenantId} and stock id ${portfolio.portfolioId}")
-        Array.emptyByteArray
-      case PortfolioArchived(portfolio) =>
-        logHelloWorldEvent(s"Portfolio Archived with tenant id ${portfolio.tenantId} and stock id ${portfolio.portfolioId}")
-        Array.emptyByteArray
-    }
-    protoMessage
-  }
-
-  private def logHelloWorldEvent(msg: String): Unit = {
-    log.info(s"Kafka Publish event Projection offset event [ ${msg} ]")
+  private def serialize(event: HelloWorldEvent):(String,Array[Byte])  = {
+    import com.example.helloworld.impl.HelloWorldEvent.HelloWorldEventOps
+    import com.example.helloworld.api.HelloWorldEvent.EventSerializerOps
+    val tenantId = event.toApiEvent.tenantId
+    val binary = event.toApiEvent.se
+    (tenantId, binary)
   }
 }
