@@ -52,7 +52,7 @@ abstract class HelloWorldApplication(context: LagomApplicationContext)
   HelloWorldQueryProjection.init(actorSystem.toTyped,stockDao,portfolioDao,tenantPlugins )
   HelloWorldPublishProjection.init(actorSystem.toTyped,tenantPlugins)
   HelloWorldEventConsumer.init(actorSystem.toTyped)
-  
+
   tenantPersistentEntityRegistry.register(wire[PortfolioEntity])
   tenantPersistentEntityRegistry.register(wire[StockEntity])
 }
