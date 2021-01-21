@@ -10,6 +10,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import akka.util.Timeout
 import com.example.domain.{Holding, Portfolio, Stock}
+import com.example.helloworld.impl.daos.portfolio.PortfolioDao
 import com.example.helloworld.impl.daos.stock.StockDao
 import com.example.helloworld.impl.entity.{CreatePortfolio, CreateStock, GetPortfolio, GetStock, PortfolioCommand, PortfolioEntity, StockCommand, StockEntity, UpdatePortfolio, UpdateStock}
 import com.example.helloworld.impl.tenant.{TenantPersistenceId, TenantPersistentEntityRegistry}
@@ -20,7 +21,9 @@ import com.example.helloworld.impl.utils.FutureConverter.FutureOptionOps
   * Implementation of the HelloWorldService.
   */
 class HelloWorldServiceImpl(
-                             tenantPersistentEntityRegistry: TenantPersistentEntityRegistry
+                             tenantPersistentEntityRegistry: TenantPersistentEntityRegistry,
+                             stockDao: StockDao,
+                             portfolioDao: PortfolioDao
 )(implicit ec: ExecutionContext)
   extends HelloWorldService {
 
@@ -74,9 +77,9 @@ class HelloWorldServiceImpl(
     }
   }
 
-  override def getAllStock(tenantId:String): ServiceCall[NotUsed, Seq[Stock]] = ??? /*ServiceCall { _ =>
-    stockDao.getAll
-  }*/
+  override def getAllStock(tenantId:String): ServiceCall[NotUsed, Seq[Stock]] = ServiceCall { _ =>
+    stockDao.getAll()(TenantPersistenceId(tenantId))
+  }
 
   override def createPortfolio(tenantId:String,portfolioId:String): ServiceCall[Seq[Holding], Portfolio] = ServiceCall { input =>
     portfolioEntityRef(portfolioId)(TenantPersistenceId(tenantId))
@@ -135,4 +138,7 @@ class HelloWorldServiceImpl(
 
   override def getInvestment(tenantId:String,portfolioId:String): ServiceCall[NotUsed, Double] = ???
 
+  override def getAllPortFolio(tenantId: String): ServiceCall[NotUsed, Seq[Portfolio]] =  ServiceCall { _ =>
+    portfolioDao.getAll()(TenantPersistenceId(tenantId))
+  }
 }
